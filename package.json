@@ -22,18 +22,15 @@
     "prerender": "^5.21.6",
     "prerender-node": "^3.8.3",
     "puppeteer": "^24.15.0",
-    "puppeteer-prerender-next": "^0.15.0",
-    "react-snap": "^1.23.0",
     "resend": "^6.12.4",
     "stripe": "^22.2.0",
-    "vite-plugin-prerender": "^1.0.8"
+    "vite-ssg": "^28.3.0"
   },
   "devDependencies": {
     "eslint": "^9.5.0"
   },
   "overrides": {
     "axios": "^1.16.1",
-    "puppeteer": "^24.15.0",
-    "braces": "^3.0.3"
+    "uuid": "^11.1.1"
   }
 }
