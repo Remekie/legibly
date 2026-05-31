@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Legibly — Can AI see your site?</title>
+  <meta name="description" content="Paste your URL. Find out if AI can see your site. Fix it in one click." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <h1>legibly</h1>
+      <p class="tagline">Paste your URL. Find out if AI can see your site.</p>
+    </header>
+
+    <section class="scan-box" aria-label="Site scanner">
+      <form id="scan-form" novalidate>
+        <label for="url-input" class="sr-only">Your website URL</label>
+        <div class="input-row">
+          <input
+            id="url-input"
+            type="url"
+            name="url"
+            placeholder="yoursite.com"
+            autocomplete="url"
+            inputmode="url"
+            required
+            aria-required="true"
+            aria-describedby="url-error"
+          />
+          <button type="submit" id="scan-btn">Scan free</button>
+        </div>
+        <p id="url-error" class="field-error" role="alert" aria-live="polite" hidden></p>
+      </form>
+    </section>
+
+    <section id="result" aria-live="polite" aria-atomic="true" hidden>
+      <!-- Populated by scan.js -->
+    </section>
+  </main>
+
+  <script src="scan.js" type="module"></script>
+</body>
+</html>
