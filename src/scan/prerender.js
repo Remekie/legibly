@@ -11,7 +11,11 @@ const TIMEOUT_MS = 15_000;
 export async function checkPrerender(url) {
   let browser;
   try {
-    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] });
+    browser = await puppeteer.launch({
+      headless: true,
+      executablePath: process.env.CHROMIUM_PATH || undefined,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
     const page = await browser.newPage();
 
     // Impersonate GPTBot — no JS execution means we get the raw server response

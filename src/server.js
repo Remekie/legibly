@@ -18,6 +18,8 @@ const scanLimiter = rateLimit({
   message: { error: 'Too many requests. Please wait a minute.' },
 });
 
+app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+
 app.post('/api/scan', scanLimiter, async (req, res) => {
   const { url } = req.body ?? {};
 
