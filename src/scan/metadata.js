@@ -4,6 +4,8 @@ const GENERIC_TITLES = /^(home|welcome|index|untitled|page|\s*)$/i;
 const GENERIC_HEADINGS = /^(welcome|hello|home|intro|introduction|section|about|services|contact|learn more|get started|\s*)$/i;
 const MIN_META_LENGTH = 80;
 
+const FETCH_TIMEOUT_MS = 8_000;
+
 export async function checkMetadata(url, html = null) {
   if (!html) {
     return { score: 0, issues: [], detail: 'Could not reach page to check metadata.' };
@@ -34,6 +36,9 @@ export async function checkMetadata(url, html = null) {
     const altCoverage = images.length === 0 ? 1 : (images.length - imagesWithoutAlt.length) / images.length;
     const altFailing = images.length > 0 && altCoverage < 0.7;
 
+    // Redirect chain check
+    const redirectChain = await checkRedirectChain(url);
+
     const issues = [];
     if (noindex)                                                    issues.push('noindex');
     if (!title || GENERIC_TITLES.test(title.split('|')[0].trim())) issues.push('title');
@@ -43,6 +48,7 @@ export async function checkMetadata(url, html = null) {
     if (!hasH2)                                                     issues.push('headings');
     if (!canonical)                                                 issues.push('canonical');
     if (altFailing)                                                 issues.push('alttext');
+    if (redirectChain >= 2)                                         issues.push('redirectchain');
 
     if (noindex) {
       return { score: 0, issues, detail: "This page is telling search and AI engines not to index it. It cannot appear in AI results." };
@@ -67,14 +73,48 @@ export async function checkMetadata(url, html = null) {
 
 function formatIssues(issues) {
   const labels = {
-    title:       'page title',
-    description: 'meta description',
-    og:          'social share tags',
-    h1:          'main heading (H1)',
-    headings:    'content structure (H2/H3)',
-    canonical:   'canonical tag',
-    alttext:     'image alt text',
-    noindex:     'noindex block',
+    title:         'page title',
+    description:   'meta description',
+    og:            'social share tags',
+    h1:            'main heading (H1)',
+    headings:      'content structure (H2/H3)',
+    canonical:     'canonical tag',
+    alttext:       'image alt text',
+    noindex:       'noindex block',
+    redirectchain: 'redirect chain (2+ hops)',
   };
   return issues.map(i => labels[i] ?? i).join(', ');
+}
+
+async function checkRedirectChain(url) {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const res = await fetch(url, {
+      method: 'HEAD',
+      redirect: 'manual',
+      signal: controller.signal,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Legibly/1.0)' },
+    });
+    clearTimeout(timer);
+    // If it's a redirect, count hops manually
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get('location');
+      if (!location) return 1;
+      // Follow one more hop to count
+      const controller2 = new AbortController();
+      const timer2 = setTimeout(() => controller2.abort(), FETCH_TIMEOUT_MS);
+      const res2 = await fetch(location, {
+        method: 'HEAD',
+        redirect: 'manual',
+        signal: controller2.signal,
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Legibly/1.0)' },
+      });
+      clearTimeout(timer2);
+      return res2.status >= 300 ? 2 : 1;
+    }
+    return 0;
+  } catch {
+    return 0;
+  }
 }

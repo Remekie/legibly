@@ -37,12 +37,16 @@ export async function scan(url) {
   ]);
   const sitePages = sitePagesResult;
 
-  // Phase 2: HTML-dependent signals from shared fetch
+  // Use shared fetch HTML, or fall back to bot HTML from Puppeteer
+  // (handles Cloudflare-protected sites that block regular browser fetches but allow GPTBot)
+  const htmlForSignals = sharedHtml ?? prerender.botHtml ?? null;
+
+  // Phase 2: HTML-dependent signals
   const [schema, content, eeat, metadata] = await Promise.all([
-    checkSchema(url, sharedHtml),
-    checkContent(url, sharedHtml),
-    checkBrandTrust(url, sharedHtml),
-    checkMetadata(url, sharedHtml),
+    checkSchema(url, htmlForSignals),
+    checkContent(url, htmlForSignals),
+    checkBrandTrust(url, htmlForSignals),
+    checkMetadata(url, htmlForSignals),
   ]);
 
   // Enrich schema signal with multi-page data
