@@ -18,15 +18,8 @@ const SIGNAL_LABELS = {
   metadata:  'Page Metadata',
 };
 
-/**
- * Generate a PDF report from a full report result object.
- * Uses Puppeteer to render HTML → PDF for pixel-perfect design.
- * @param {object} reportData - Full result from generateReport()
- * @returns {Promise<Buffer>} PDF bytes
- */
 export async function generatePDF(reportData) {
   const html = buildReportHTML(reportData);
-
   let browser;
   try {
     browser = await puppeteer.launch({
@@ -53,637 +46,641 @@ function esc(str) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// Palette derived from the physical reality of this product:
+// a diagnostic lab report. Ink on paper. Red for critical. Black for authority.
+// No gradients. No glow. No purple.
 function gradeColor(grade) {
-  return { A: '#4ade80', B: '#a3e635', C: '#facc15', D: '#fb923c', F: '#f87171' }[grade] ?? '#f87171';
+  return { A: '#1a6b2e', B: '#2d6b1a', C: '#7a5c00', D: '#8b2500', F: '#8b0000' }[grade] ?? '#8b0000';
 }
 
-function signalColor(score, stub) {
-  if (stub) return '#52525b';
-  if (score >= 8) return '#4ade80';
-  if (score > 0)  return '#facc15';
-  return '#f87171';
+function gradeBackground(grade) {
+  return { A: '#e8f5eb', B: '#edf5e8', C: '#fef9e7', D: '#fef0e7', F: '#fce8e8' }[grade] ?? '#fce8e8';
 }
 
-function signalIcon(score, stub) {
-  if (stub) return '·';
-  if (score >= 8) return '✓';
-  if (score > 0)  return '~';
-  return '✗';
+function signalStatus(score, stub) {
+  if (stub) return 'pending';
+  if (score >= 8) return 'pass';
+  if (score > 0) return 'partial';
+  return 'fail';
 }
 
 function gaugeArc(pct) {
-  const r = 70, cx = 90, cy = 90;
+  const r = 65, cx = 85, cy = 85;
   const circ = 2 * Math.PI * r;
   const arc  = circ * 0.75;
   const fill = arc * (pct / 100);
-  const gap  = circ - arc;
-  const color = pct >= 80 ? '#4ade80' : pct >= 50 ? '#facc15' : '#f87171';
-  return { r, cx, cy, circ, arc, fill, gap, color };
+  const color = pct >= 80 ? '#1a6b2e' : pct >= 50 ? '#7a5c00' : '#8b0000';
+  return { r, cx, cy, circ, arc, fill, color };
 }
 
 function buildReportHTML(data) {
   const { url, grade, score, blocker, signals, context, report } = data;
-  const domain = context?.domain ?? new URL(url).hostname;
-  const title  = context?.title ?? domain;
+  const domain  = context?.domain ?? new URL(url).hostname;
+  const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const gColor  = gradeColor(grade);
+  const gBg     = gradeBackground(grade);
   const prerender = signals?.prerender ?? {};
   const visPct  = prerender.visibilityPct ?? null;
   const missing = prerender.missingWordCount ?? 0;
-  const gColor  = gradeColor(grade);
-  const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const g = visPct !== null ? gaugeArc(visPct) : null;
 
-  const promptsHTML = (() => {
+  // ── Signal rows ──────────────────────────────────────────────────────────────
+  const signalsHTML = Object.entries(signals ?? {}).map(([key, s], i) => {
+    const status = signalStatus(s.score, s.stub);
+    const statusColors = { pass: '#1a6b2e', partial: '#7a5c00', fail: '#8b0000', pending: '#6b7280' };
+    const statusLabels = { pass: 'PASS', partial: 'PARTIAL', fail: 'FAIL', pending: 'PENDING' };
+    const barPct = s.stub ? 0 : (s.score / 10) * 100;
+    return `
+      <tr style="background:${i % 2 === 0 ? '#fff' : '#fafaf9'}">
+        <td style="padding:9px 12px;font-size:9.5pt;font-weight:600;color:#1a1a1a;border-bottom:1px solid #e5e5e0;">
+          ${esc(SIGNAL_LABELS[key] ?? key)}
+        </td>
+        <td style="padding:9px 12px;border-bottom:1px solid #e5e5e0;">
+          <span style="display:inline-block;padding:2px 8px;border-radius:3px;font-size:7.5pt;font-weight:700;letter-spacing:0.07em;
+            background:${statusColors[status]}18;color:${statusColors[status]};border:1px solid ${statusColors[status]}40;">
+            ${statusLabels[status]}
+          </span>
+        </td>
+        <td style="padding:9px 12px;border-bottom:1px solid #e5e5e0;">
+          <div style="background:#e5e5e0;border-radius:2px;height:5px;width:120px;">
+            <div style="background:${statusColors[status]};height:5px;border-radius:2px;width:${barPct}%;"></div>
+          </div>
+        </td>
+        <td style="padding:9px 12px;font-size:8.5pt;color:#4a4a4a;border-bottom:1px solid #e5e5e0;max-width:280px;line-height:1.4;">
+          ${s.stub ? 'Full report' : esc(s.detail ?? '')}
+        </td>
+      </tr>`;
+  }).join('');
+
+  // ── Prompts ──────────────────────────────────────────────────────────────────
+  const promptsSection = (() => {
     const p = report?.prompts;
     if (!p) return '';
-    const rows = Object.entries(p)
-      .filter(([, v]) => v?.length)
-      .map(([intent, prompts]) => `
-        <div class="prompt-group">
-          <div class="intent-badge">${esc(INTENT_LABELS[intent] ?? intent)}</div>
-          ${prompts.map(q => `<div class="prompt-item">"${esc(q)}"</div>`).join('')}
+    const groups = Object.entries(p).filter(([, v]) => v?.length).map(([intent, prompts], gi) => `
+      <div style="margin-bottom:18px;">
+        <div style="font-size:7pt;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;
+          color:#6b7280;border-left:3px solid #1a1a1a;padding-left:8px;margin-bottom:8px;">
+          ${esc(INTENT_LABELS[intent] ?? intent)}
         </div>
-      `).join('');
-    return rows ? `
-      <div class="section">
-        <div class="section-header">
-          <span class="section-icon">🎯</span>
-          <h2>Prompts This Page Should Be Winning</h2>
+        ${prompts.map(q => `
+          <div style="padding:7px 12px;font-size:9.5pt;color:#1a1a1a;line-height:1.45;
+            border-bottom:1px solid #e5e5e0;font-style:italic;">
+            "${esc(q)}"
+          </div>`).join('')}
+      </div>`).join('');
+
+    return groups ? `
+      <div class="section-page">
+        <div class="section-rule">
+          <span class="section-num">02</span>
+          <span class="section-name">Prompts This Site Should Be Winning</span>
         </div>
-        <p class="section-sub">Real queries people type into ChatGPT and Perplexity where this site should appear — but likely doesn't.</p>
-        <div class="prompts-grid">${rows}</div>
+        <p style="font-size:9.5pt;color:#4a4a4a;margin-bottom:20px;line-height:1.5;">
+          Real queries typed into ChatGPT, Perplexity, and Claude where <strong>${esc(domain)}</strong> should appear in the answer — but currently doesn't. These represent direct revenue exposure.
+        </p>
+        ${groups}
       </div>` : '';
   })();
 
-  const schemaHTML = (() => {
+  // ── Schema recs ───────────────────────────────────────────────────────────────
+  const schemaSection = (() => {
     const recs = report?.schemaRecs?.recommendations;
     if (!recs?.length) return '';
     return `
-      <div class="section">
-        <div class="section-header">
-          <span class="section-icon">🏗️</span>
-          <h2>Structured Data — Add This to Your Site</h2>
+      <div style="margin-bottom:28px;">
+        <div class="section-rule">
+          <span class="section-num">03</span>
+          <span class="section-name">Structured Data — Deploy These Snippets</span>
         </div>
-        <p class="section-sub">Paste each snippet inside a &lt;script type="application/ld+json"&gt; tag in your page &lt;head&gt;.</p>
+        <p style="font-size:9.5pt;color:#4a4a4a;margin-bottom:16px;line-height:1.5;">
+          Each block below goes inside a <code style="font-family:'Courier New',monospace;font-size:8.5pt;background:#f0f0ec;padding:1px 4px;border-radius:2px;">&lt;script type="application/ld+json"&gt;</code> tag in your page <code style="font-family:'Courier New',monospace;font-size:8.5pt;background:#f0f0ec;padding:1px 4px;border-radius:2px;">&lt;head&gt;</code>.
+        </p>
         ${recs.map(r => `
-          <div class="schema-block">
-            <div class="schema-header">
-              <span class="type-badge">${esc(r.type)}</span>
-              <span class="schema-reason">${esc(r.reason)}</span>
+          <div style="margin-bottom:20px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+              <span style="display:inline-block;padding:3px 9px;font-size:7.5pt;font-weight:700;letter-spacing:0.06em;
+                background:#1a1a1a;color:#fff;border-radius:3px;">${esc(r.type)}</span>
+              <span style="font-size:9pt;color:#4a4a4a;">${esc(r.reason)}</span>
             </div>
-            <pre class="code-block">${esc(r.snippet)}</pre>
-          </div>
-        `).join('')}
+            <pre style="background:#1a1a1a;color:#d4d4d0;font-family:'Courier New',monospace;
+              font-size:7.5pt;line-height:1.65;padding:14px;border-radius:4px;
+              white-space:pre-wrap;word-break:break-word;margin:0;">${esc(r.snippet)}</pre>
+          </div>`).join('')}
       </div>`;
   })();
 
-  const llmstxtHTML = (() => {
+  // ── llms.txt ──────────────────────────────────────────────────────────────────
+  const llmsSection = (() => {
     const lt = report?.llmstxt;
     if (!lt?.content) return '';
     return `
-      <div class="section">
-        <div class="section-header">
-          <span class="section-icon">📄</span>
-          <h2>Your llms.txt File</h2>
+      <div style="margin-bottom:28px;">
+        <div class="section-rule">
+          <span class="section-num">04</span>
+          <span class="section-name">Generated llms.txt — Upload to Site Root</span>
         </div>
-        <p class="section-sub">Upload this file to <strong>https://${esc(domain)}/llms.txt</strong> so AI engines have a plain-language guide to your site. Covers ${lt.pageCount ?? '?'} pages.</p>
-        <pre class="code-block llmstxt-block">${esc(lt.content)}</pre>
+        <p style="font-size:9.5pt;color:#4a4a4a;margin-bottom:12px;line-height:1.5;">
+          Save as <code style="font-family:'Courier New',monospace;font-size:8.5pt;background:#f0f0ec;padding:1px 4px;border-radius:2px;">llms.txt</code> and upload to <strong>https://${esc(domain)}/llms.txt</strong>. This file tells AI engines what your site covers in plain language. Covers ${lt.pageCount ?? '?'} pages.
+        </p>
+        <pre style="background:#1a1a1a;color:#d4d4d0;font-family:'Courier New',monospace;
+          font-size:7.5pt;line-height:1.65;padding:14px;border-radius:4px;
+          white-space:pre-wrap;word-break:break-word;max-height:260pt;overflow:hidden;margin:0;">${esc(lt.content)}</pre>
       </div>`;
   })();
 
-  const fixesHTML = (() => {
+  // ── Fixes ─────────────────────────────────────────────────────────────────────
+  const fixesSection = (() => {
     const fixes = report?.fixes;
     if (!fixes || !Object.keys(fixes).length) return '';
-    const items = Object.values(fixes).map(fix => {
-      if (!fix) return '';
-      if (fix.items) {
-        return `
-          <div class="fix-block">
-            <h4>${esc(fix.title)}</h4>
-            ${fix.items.map(i => `
-              <div class="fix-item">
-                <strong>${esc(i.label)}</strong>
-                <pre class="code-block">${esc(i.instruction)}</pre>
-              </div>`).join('')}
-          </div>`;
-      }
+    const fixHTML = Object.values(fixes).filter(Boolean).map(fix => {
+      const options = fix.items
+        ? fix.items.map(i => `
+            <div style="margin-bottom:10px;">
+              <div style="font-size:9pt;font-weight:600;color:#1a1a1a;margin-bottom:4px;">${esc(i.label)}</div>
+              <pre style="background:#f5f3ef;border:1px solid #e5e5e0;border-radius:4px;padding:10px;
+                font-family:'Courier New',monospace;font-size:7.5pt;line-height:1.6;
+                white-space:pre-wrap;word-break:break-word;color:#1a1a1a;margin:0;">${esc(i.instruction)}</pre>
+            </div>`).join('')
+        : (fix.options ?? []).map(o => `
+            <div style="margin-bottom:10px;">
+              <div style="font-size:9pt;font-weight:600;color:#1a1a1a;margin-bottom:4px;">${esc(o.label)}</div>
+              <pre style="background:#f5f3ef;border:1px solid #e5e5e0;border-radius:4px;padding:10px;
+                font-family:'Courier New',monospace;font-size:7.5pt;line-height:1.6;
+                white-space:pre-wrap;word-break:break-word;color:#1a1a1a;margin:0;">${o.steps.map(s => esc(s)).join('\n')}</pre>
+              ${o.note ? `<p style="font-size:8pt;color:#6b7280;margin-top:4px;font-style:italic;">${esc(o.note)}</p>` : ''}
+            </div>`).join('');
       return `
-        <div class="fix-block">
-          <h4>${esc(fix.title)}</h4>
-          ${(fix.options ?? []).map(o => `
-            <div class="fix-option">
-              <strong>${esc(o.label)}</strong>
-              <pre class="code-block">${o.steps.map(s => esc(s)).join('\n')}</pre>
-              ${o.note ? `<p class="fix-note">${esc(o.note)}</p>` : ''}
-            </div>`).join('')}
+        <div style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid #e5e5e0;">
+          <div style="font-size:10.5pt;font-weight:700;color:#1a1a1a;margin-bottom:10px;">${esc(fix.title)}</div>
+          ${options}
         </div>`;
     }).join('');
+
     return `
-      <div class="section">
-        <div class="section-header">
-          <span class="section-icon">🔧</span>
-          <h2>How to Fix What's Failing</h2>
+      <div style="margin-bottom:28px;">
+        <div class="section-rule">
+          <span class="section-num">05</span>
+          <span class="section-name">Implementation — Copy-Paste Fixes</span>
         </div>
-        ${items}
+        ${fixHTML}
       </div>`;
   })();
-
-  const signalsHTML = Object.entries(signals ?? {}).map(([key, s]) => `
-    <div class="signal-row">
-      <span class="signal-icon-sm" style="color:${signalColor(s.score, s.stub)}">${signalIcon(s.score, s.stub)}</span>
-      <span class="signal-name">${esc(SIGNAL_LABELS[key] ?? key)}</span>
-      <span class="signal-score" style="color:${signalColor(s.score, s.stub)}">${s.stub ? '—' : s.score + '/10'}</span>
-      <div class="signal-bar-wrap">
-        <div class="signal-bar" style="width:${s.stub ? 0 : (s.score / 10) * 100}%;background:${signalColor(s.score, s.stub)}"></div>
-      </div>
-    </div>
-  `).join('');
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Visibility Report — ${esc(domain)}</title>
+<title>AI Visibility Audit — ${esc(domain)}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap');
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #ffffff;
-    color: #0f172a;
-    font-size: 11pt;
+    font-family: 'Inter', Georgia, sans-serif;
+    background: #fff;
+    color: #1a1a1a;
+    font-size: 10.5pt;
+    line-height: 1.6;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ─── COVER: diagnostic lab report, not SaaS landing page ─────────────────── */
+  .cover {
+    min-height: 100vh;
+    background: #fff;
+    padding: 0;
+    page-break-after: always;
+    display: flex;
+    flex-direction: column;
+    border-top: 12px solid #1a1a1a;
+  }
+
+  .cover-top {
+    padding: 36px 56px 28px;
+    border-bottom: 1px solid #e5e5e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .cover-brand-name {
+    font-family: 'Inter', sans-serif;
+    font-size: 15pt;
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    color: #1a1a1a;
+  }
+
+  .cover-brand-desc {
+    font-size: 8pt;
+    color: #6b7280;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+
+  .cover-meta {
+    text-align: right;
+    font-size: 8.5pt;
+    color: #6b7280;
     line-height: 1.6;
   }
 
-  /* ── Cover page ── */
-  .cover {
-    background: linear-gradient(145deg, #0a0a0f 0%, #0f1729 60%, #1a0f2e 100%);
-    min-height: 100vh;
-    padding: 60px 64px;
-    display: flex;
-    flex-direction: column;
-    color: #fff;
-    page-break-after: always;
-  }
-
-  .cover-brand {
-    font-size: 18pt;
-    font-weight: 900;
-    letter-spacing: -0.03em;
-    color: #e8ff47;
-    margin-bottom: 4px;
-  }
-
-  .cover-tagline { font-size: 9pt; color: rgba(255,255,255,0.45); letter-spacing: 0.06em; text-transform: uppercase; }
-
   .cover-body {
     flex: 1;
+    padding: 48px 56px;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 32px;
+    gap: 36px;
   }
 
-  .cover-title { font-size: 28pt; font-weight: 800; line-height: 1.2; letter-spacing: -0.03em; }
-  .cover-domain {
-    font-size: 13pt;
-    color: rgba(255,255,255,0.55);
-    font-weight: 500;
-    word-break: break-all;
+  .cover-report-label {
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #6b7280;
+    border-top: 2px solid #1a1a1a;
+    padding-top: 10px;
+    display: inline-block;
   }
 
-  .cover-grade-row {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    margin-top: 8px;
-  }
-
-  .cover-grade {
-    font-size: 80pt;
+  .cover-headline {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 36pt;
     font-weight: 900;
-    letter-spacing: -0.05em;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: #1a1a1a;
+    max-width: 540px;
+  }
+
+  .cover-url {
+    font-size: 10pt;
+    color: #4a4a4a;
+    word-break: break-all;
+    padding: 10px 14px;
+    background: #f5f3ef;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    display: inline-block;
+  }
+
+  .cover-grade-block {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    border: 1.5px solid #1a1a1a;
+    border-radius: 6px;
+    overflow: hidden;
+    max-width: 440px;
+  }
+
+  .cover-grade-main {
+    background: ${gBg};
+    border-right: 1.5px solid #1a1a1a;
+    padding: 20px 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 110px;
+  }
+
+  .cover-grade-letter {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 56pt;
+    font-weight: 900;
     line-height: 1;
     color: ${gColor};
-    text-shadow: 0 0 40px ${gColor}40;
   }
 
-  .cover-grade-meta { display: flex; flex-direction: column; gap: 6px; }
-  .cover-score { font-size: 14pt; font-weight: 700; color: #fff; }
-  .cover-score-sub { font-size: 9pt; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.06em; }
+  .cover-grade-label {
+    font-size: 7pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #6b7280;
+    font-weight: 600;
+  }
 
-  ${blocker ? `
+  .cover-grade-detail {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    flex: 1;
+  }
+
+  .cover-score-num {
+    font-size: 20pt;
+    font-weight: 800;
+    color: #1a1a1a;
+    line-height: 1;
+  }
+
+  .cover-score-label { font-size: 8.5pt; color: #6b7280; }
+
   .cover-blocker {
-    background: rgba(248,113,113,0.12);
-    border: 1px solid rgba(248,113,113,0.3);
-    border-radius: 10px;
-    padding: 14px 18px;
-    color: #fca5a5;
-    font-size: 10pt;
-    line-height: 1.5;
+    font-size: 9pt;
+    color: #8b0000;
+    line-height: 1.4;
+    margin-top: 4px;
+    font-weight: 500;
   }
-  .cover-blocker::before { content: '⚠️  '; }
-  ` : ''}
 
-  .cover-vis-row {
+  ${g ? `
+  .cover-vis-block {
     display: flex;
     align-items: center;
     gap: 20px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 12px;
-    padding: 16px 20px;
+    padding: 14px 18px;
+    border: 1.5px solid #e5e5e0;
+    border-radius: 6px;
+    max-width: 340px;
   }
-
-  .cover-vis-pct { font-size: 32pt; font-weight: 800; line-height: 1; color: ${g ? g.color : '#fff'}; }
-  .cover-vis-label { font-size: 10pt; color: rgba(255,255,255,0.6); }
-  .cover-vis-missing { font-size: 9pt; color: #f87171; margin-top: 2px; }
+  .cover-vis-pct {
+    font-size: 28pt;
+    font-weight: 900;
+    line-height: 1;
+    color: ${gaugeArc(visPct).color};
+    font-family: 'Inter', sans-serif;
+  }
+  .cover-vis-label { font-size: 9pt; color: #4a4a4a; line-height: 1.4; }
+  .cover-vis-missing { font-size: 8.5pt; color: #8b0000; margin-top: 3px; }
+  ` : ''}
 
   .cover-footer {
+    padding: 16px 56px;
+    border-top: 1px solid #e5e5e0;
     display: flex;
     justify-content: space-between;
-    align-items: flex-end;
-    color: rgba(255,255,255,0.3);
-    font-size: 8pt;
+    font-size: 7.5pt;
+    color: #9ca3af;
+    letter-spacing: 0.04em;
   }
 
-  /* ── Inner pages ── */
+  /* ─── INNER PAGES ──────────────────────────────────────────────────────────── */
   .page {
-    padding: 48px 56px;
+    padding: 40px 56px 36px;
     page-break-after: always;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    border-top: 4px solid #1a1a1a;
   }
-
   .page:last-child { page-break-after: avoid; }
 
   .page-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding-bottom: 16px;
-    border-bottom: 2px solid #e8ff47;
-    margin-bottom: 32px;
+    align-items: baseline;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e5e5e0;
+    margin-bottom: 28px;
   }
 
-  .page-header-brand { font-size: 10pt; font-weight: 800; color: #e8ff47; }
-  .page-header-domain { font-size: 8pt; color: #94a3b8; }
+  .page-header-brand {
+    font-size: 9pt;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    color: #1a1a1a;
+  }
+
+  .page-header-info { font-size: 8pt; color: #9ca3af; }
 
   .page-footer {
     margin-top: auto;
-    padding-top: 16px;
-    border-top: 1px solid #e2e8f0;
+    padding-top: 14px;
+    border-top: 1px solid #e5e5e0;
     display: flex;
     justify-content: space-between;
+    font-size: 7.5pt;
+    color: #9ca3af;
+  }
+
+  /* ─── SECTION RULES ────────────────────────────────────────────────────────── */
+  .section-rule {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #1a1a1a;
+  }
+  .section-num {
     font-size: 8pt;
-    color: #94a3b8;
+    font-weight: 700;
+    color: #9ca3af;
+    letter-spacing: 0.1em;
   }
-
-  /* ── Score card page ── */
-  .scorecard-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-    margin-bottom: 32px;
-  }
-
-  .score-main {
-    background: #0f172a;
-    border-radius: 14px;
-    padding: 28px;
-    color: #fff;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .score-grade-lg { font-size: 64pt; font-weight: 900; line-height: 1; color: ${gColor}; }
-  .score-num { font-size: 16pt; font-weight: 700; color: #fff; }
-  .score-label-sm { font-size: 8pt; color: rgba(255,255,255,0.45); text-transform: uppercase; letter-spacing: 0.08em; }
-
-  ${g ? `
-  .gauge-wrap {
-    background: #f8fafc;
-    border-radius: 14px;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    border: 1px solid #e2e8f0;
-  }
-  .gauge-label-main { font-size: 9pt; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; }
-  .gauge-missing-label { font-size: 9pt; color: #ef4444; text-align: center; }
-  ` : ''}
-
-  /* Signals */
-  .signals-section { margin-bottom: 28px; }
-  .signals-title { font-size: 12pt; font-weight: 700; margin-bottom: 14px; color: #0f172a; }
-
-  .signal-row {
-    display: grid;
-    grid-template-columns: 18px 1fr 48px 120px;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 0;
-    border-bottom: 1px solid #f1f5f9;
-  }
-  .signal-row:last-child { border-bottom: none; }
-  .signal-icon-sm { font-size: 11pt; font-weight: 700; text-align: center; }
-  .signal-name { font-size: 9.5pt; font-weight: 500; color: #1e293b; }
-  .signal-score { font-size: 9pt; font-weight: 700; text-align: right; }
-  .signal-bar-wrap { height: 5px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
-  .signal-bar { height: 100%; border-radius: 3px; transition: width 0.3s; }
-
-  /* ── Sections ── */
-  .section {
-    margin-bottom: 36px;
-  }
-
-  .section-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
-  }
-
-  .section-header h2 {
-    font-size: 13pt;
+  .section-name {
+    font-size: 12pt;
     font-weight: 800;
-    color: #0f172a;
+    color: #1a1a1a;
     letter-spacing: -0.02em;
   }
 
-  .section-icon { font-size: 14pt; }
-
-  .section-sub {
-    font-size: 9.5pt;
-    color: #64748b;
-    margin-bottom: 16px;
-    line-height: 1.5;
-  }
-
-  /* Prompts */
-  .prompts-grid { display: flex; flex-direction: column; gap: 16px; }
-  .prompt-group { border-left: 3px solid #e8ff47; padding-left: 14px; }
-  .intent-badge {
-    display: inline-block;
-    font-size: 7.5pt;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: #e8ff47;
-    background: #0f172a;
-    padding: 2px 8px;
-    border-radius: 4px;
-    margin-bottom: 6px;
-  }
-  .prompt-item {
-    font-size: 9.5pt;
-    color: #1e293b;
-    padding: 5px 0;
-    line-height: 1.4;
-    border-bottom: 1px solid #f1f5f9;
-  }
-  .prompt-item:last-child { border-bottom: none; }
-
-  /* Schema */
-  .schema-block { margin-bottom: 20px; }
-  .schema-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
-  .type-badge {
-    font-size: 7.5pt;
-    font-weight: 700;
-    padding: 3px 8px;
-    border-radius: 4px;
-    background: #e8ff4720;
-    color: #84883a;
-    border: 1px solid #e8ff4740;
-    white-space: nowrap;
-  }
-  .schema-reason { font-size: 9pt; color: #64748b; flex: 1; }
-
-  /* Code blocks */
-  .code-block {
-    background: #0f172a;
-    border-radius: 8px;
-    padding: 14px 16px;
-    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-    font-size: 7.5pt;
-    line-height: 1.65;
-    color: #e2e8f0;
-    white-space: pre-wrap;
-    word-break: break-word;
-    overflow: hidden;
-  }
-  .llmstxt-block { max-height: 300pt; overflow: hidden; }
-
-  /* Fixes */
-  .fix-block { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #e2e8f0; }
-  .fix-block:last-child { border-bottom: none; }
-  .fix-block h4 { font-size: 11pt; font-weight: 700; margin-bottom: 10px; color: #0f172a; }
-  .fix-option, .fix-item { margin-bottom: 12px; }
-  .fix-option strong, .fix-item strong { font-size: 9.5pt; display: block; margin-bottom: 6px; color: #1e293b; }
-  .fix-note { font-size: 8.5pt; color: #94a3b8; margin-top: 6px; font-style: italic; }
-
-  /* Roadmap */
-  .roadmap-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    margin-top: 8px;
-  }
-  .roadmap-phase {
-    border-radius: 10px;
-    padding: 16px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-  }
-  .roadmap-phase-label {
-    font-size: 7pt;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 8px;
-    color: #94a3b8;
-  }
-  .roadmap-phase.quick .roadmap-phase-label { color: #4ade80; }
-  .roadmap-phase.medium .roadmap-phase-label { color: #facc15; }
-  .roadmap-phase.deep .roadmap-phase-label { color: #a78bfa; }
-  .roadmap-item {
-    font-size: 9pt;
-    color: #334155;
-    padding: 4px 0;
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
-  }
-  .roadmap-item::before { content: '→'; color: #94a3b8; flex-shrink: 0; }
+  .section-page { margin-bottom: 28px; }
 </style>
 </head>
 <body>
 
-<!-- ═══════════════════════════════ COVER PAGE ═══════════════════════════════ -->
+<!-- ═══ COVER ═══════════════════════════════════════════════════════════════ -->
 <div class="cover">
-  <div>
-    <div class="cover-brand">legibly</div>
-    <div class="cover-tagline">AI Visibility Report</div>
+  <div class="cover-top">
+    <div>
+      <div class="cover-brand-name">legibly</div>
+      <div class="cover-brand-desc">AI Visibility Audit</div>
+    </div>
+    <div class="cover-meta">
+      Report Date: ${dateStr}<br>
+      Audit Target: ${esc(domain)}<br>
+      Report Type: Technical + Content + Competitive
+    </div>
   </div>
 
   <div class="cover-body">
     <div>
-      <div class="cover-title">AI Visibility<br>Audit Report</div>
-      <div class="cover-domain" style="margin-top:10px;">${esc(url)}</div>
+      <span class="cover-report-label">AI Visibility Audit Report</span>
+      <h1 class="cover-headline">What AI can see<br>on ${esc(domain)}</h1>
     </div>
 
-    <div class="cover-grade-row">
-      <div class="cover-grade">${esc(grade)}</div>
-      <div class="cover-grade-meta">
-        <div class="cover-score">${score}/100</div>
-        <div class="cover-score-sub">AI Visibility Score</div>
-        ${blocker ? `<div style="margin-top:6px;font-size:8.5pt;color:#fca5a5;">${esc(blocker)}</div>` : ''}
+    <div class="cover-url">${esc(url)}</div>
+
+    <div class="cover-grade-block">
+      <div class="cover-grade-main">
+        <div class="cover-grade-letter">${esc(grade)}</div>
+        <div class="cover-grade-label">Grade</div>
+      </div>
+      <div class="cover-grade-detail">
+        <div class="cover-score-num">${score}<span style="font-size:11pt;font-weight:500;color:#6b7280;">/100</span></div>
+        <div class="cover-score-label">AI Visibility Score</div>
+        ${blocker ? `<div class="cover-blocker">${esc(blocker)}</div>` : '<div style="font-size:9pt;color:#1a6b2e;margin-top:4px;">No critical blockers detected</div>'}
       </div>
     </div>
 
     ${visPct !== null ? `
-    <div class="cover-vis-row">
+    <div class="cover-vis-block">
+      <div class="cover-vis-pct">${visPct}%</div>
       <div>
-        <div class="cover-vis-pct">${visPct}%</div>
-        <div class="cover-vis-label">of your content is visible to AI</div>
-        ${missing > 0 ? `<div class="cover-vis-missing">${missing} words hidden from AI crawlers</div>` : ''}
+        <div class="cover-vis-label">of page content is visible<br>to AI crawlers</div>
+        ${missing > 0 ? `<div class="cover-vis-missing">${missing} words invisible to AI</div>` : '<div style="font-size:8.5pt;color:#1a6b2e;">All content readable by AI</div>'}
       </div>
     </div>` : ''}
   </div>
 
   <div class="cover-footer">
-    <span>${esc(domain)}</span>
-    <span>${dateStr}</span>
+    <span>Confidential — prepared for ${esc(domain)}</span>
+    <span>legibly.dev</span>
   </div>
 </div>
 
-<!-- ═══════════════════════════════ SCORE CARD PAGE ═══════════════════════════════ -->
+<!-- ═══ SCORE CARD ══════════════════════════════════════════════════════════ -->
 <div class="page">
   <div class="page-header">
     <div class="page-header-brand">legibly</div>
-    <div class="page-header-domain">${esc(domain)} — ${dateStr}</div>
+    <div class="page-header-info">${esc(domain)} — ${dateStr}</div>
   </div>
 
-  <div class="scorecard-grid">
-    <div class="score-main">
-      <div class="score-label-sm">Overall Grade</div>
-      <div class="score-grade-lg">${esc(grade)}</div>
-      <div class="score-num">${score} / 100</div>
-      <div class="score-label-sm">AI Visibility Score</div>
-      ${blocker ? `<div style="margin-top:12px;font-size:9pt;color:#fca5a5;line-height:1.4;">${esc(blocker)}</div>` : ''}
+  <div class="section-rule">
+    <span class="section-num">01</span>
+    <span class="section-name">Signal Diagnostic — ${esc(domain)}</span>
+  </div>
+
+  <p style="font-size:9.5pt;color:#4a4a4a;margin-bottom:20px;line-height:1.5;">
+    Seven signals measured across technical crawlability, content structure, metadata, and authority. Each signal contributes to the overall AI Visibility Score. Failing signals suppress AI citation regardless of content quality.
+  </p>
+
+  <!-- Grade + Gauge summary row -->
+  <div style="display:flex;gap:20px;margin-bottom:24px;">
+    <div style="border:1.5px solid #1a1a1a;border-radius:6px;overflow:hidden;display:flex;min-width:180px;">
+      <div style="background:${gBg};border-right:1.5px solid #1a1a1a;padding:16px 20px;display:flex;flex-direction:column;align-items:center;gap:2px;">
+        <div style="font-family:'Playfair Display',Georgia,serif;font-size:44pt;font-weight:900;line-height:1;color:${gColor};">${esc(grade)}</div>
+        <div style="font-size:7pt;letter-spacing:0.1em;text-transform:uppercase;color:#6b7280;">Grade</div>
+      </div>
+      <div style="padding:12px 16px;display:flex;flex-direction:column;justify-content:center;gap:4px;">
+        <div style="font-size:18pt;font-weight:800;color:#1a1a1a;line-height:1;">${score}<span style="font-size:10pt;font-weight:500;color:#6b7280;">/100</span></div>
+        <div style="font-size:7.5pt;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;">AI Visibility Score</div>
+      </div>
     </div>
 
     ${g ? `
-    <div class="gauge-wrap">
-      <div class="gauge-label-main">Content Visibility</div>
-      <svg viewBox="0 0 180 180" width="140" height="140">
-        <circle cx="${g.cx}" cy="${g.cy}" r="${g.r}" fill="none" stroke="#e2e8f0" stroke-width="12"
+    <div style="border:1.5px solid #e5e5e0;border-radius:6px;padding:14px 20px;display:flex;align-items:center;gap:14px;flex:1;">
+      <svg viewBox="0 0 170 170" width="110" height="110">
+        <circle cx="${g.cx}" cy="${g.cy}" r="${g.r}" fill="none" stroke="#e5e5e0" stroke-width="10"
           stroke-dasharray="${g.arc.toFixed(1)} ${g.circ.toFixed(1)}"
           transform="rotate(135 ${g.cx} ${g.cy})" stroke-linecap="round"/>
-        <circle cx="${g.cx}" cy="${g.cy}" r="${g.r}" fill="none" stroke="${g.color}" stroke-width="12"
+        <circle cx="${g.cx}" cy="${g.cy}" r="${g.r}" fill="none" stroke="${g.color}" stroke-width="10"
           stroke-dasharray="${g.fill.toFixed(1)} ${(g.circ - g.fill).toFixed(1)}"
-          transform="rotate(135 ${g.cx} ${g.cy})" stroke-linecap="round"
-          style="filter:drop-shadow(0 0 6px ${g.color}60)"/>
-        <text x="${g.cx}" y="${g.cy - 6}" text-anchor="middle" font-family="Inter,sans-serif" font-weight="800" font-size="26" fill="${g.color}">${visPct}%</text>
-        <text x="${g.cx}" y="${g.cy + 14}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="#94a3b8">visible to AI</text>
+          transform="rotate(135 ${g.cx} ${g.cy})" stroke-linecap="round"/>
+        <text x="${g.cx}" y="${g.cy - 4}" text-anchor="middle"
+          font-family="Inter,sans-serif" font-weight="800" font-size="22" fill="${g.color}">${visPct}%</text>
+        <text x="${g.cx}" y="${g.cy + 13}" text-anchor="middle"
+          font-family="Inter,sans-serif" font-size="8" fill="#9ca3af">visible to AI</text>
       </svg>
-      ${missing > 0 ? `<div class="gauge-missing-label">${missing} words hidden from AI</div>` : '<div style="font-size:9pt;color:#4ade80;">All content visible ✓</div>'}
-    </div>` : '<div></div>'}
+      <div>
+        <div style="font-size:9pt;font-weight:700;color:#1a1a1a;margin-bottom:4px;">Content Visibility</div>
+        <div style="font-size:8.5pt;color:#4a4a4a;line-height:1.5;">
+          ${visPct >= 80 ? 'Most content readable by AI crawlers.' : visPct >= 50 ? 'Significant content hidden from AI.' : 'Most content invisible to AI crawlers.'}
+        </div>
+        ${missing > 0 ? `<div style="font-size:8.5pt;color:#8b0000;margin-top:6px;font-weight:600;">${missing} words hidden from AI</div>` : '<div style="font-size:8.5pt;color:#1a6b2e;margin-top:6px;">Full content visible to AI</div>'}
+      </div>
+    </div>` : ''}
   </div>
 
-  <div class="signals-section">
-    <div class="signals-title">Signal Breakdown</div>
-    ${signalsHTML}
-  </div>
+  <!-- Signals table -->
+  <table style="width:100%;border-collapse:collapse;border:1.5px solid #e5e5e0;border-radius:6px;overflow:hidden;font-size:9pt;">
+    <thead>
+      <tr style="background:#1a1a1a;color:#fff;">
+        <th style="padding:9px 12px;text-align:left;font-size:7.5pt;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Signal</th>
+        <th style="padding:9px 12px;text-align:left;font-size:7.5pt;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Status</th>
+        <th style="padding:9px 12px;text-align:left;font-size:7.5pt;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Score</th>
+        <th style="padding:9px 12px;text-align:left;font-size:7.5pt;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Finding</th>
+      </tr>
+    </thead>
+    <tbody>${signalsHTML}</tbody>
+  </table>
 
   <div class="page-footer">
-    <span>legibly.dev — AI Visibility Report</span>
-    <span>Page 2</span>
+    <span>legibly.dev — AI Visibility Audit</span>
+    <span>Page 1 of 5</span>
   </div>
 </div>
 
-<!-- ═══════════════════════════════ PROMPTS PAGE ═══════════════════════════════ -->
-${promptsHTML ? `
+<!-- ═══ PROMPTS ══════════════════════════════════════════════════════════════ -->
+${promptsSection ? `
 <div class="page">
   <div class="page-header">
     <div class="page-header-brand">legibly</div>
-    <div class="page-header-domain">${esc(domain)}</div>
+    <div class="page-header-info">${esc(domain)}</div>
   </div>
-  ${promptsHTML}
+  ${promptsSection}
   <div class="page-footer">
-    <span>legibly.dev — AI Visibility Report</span>
-    <span>Page 3</span>
+    <span>legibly.dev — AI Visibility Audit</span>
+    <span>Page 2 of 5</span>
   </div>
 </div>` : ''}
 
-<!-- ═══════════════════════════════ FIXES + SCHEMA PAGE ═══════════════════════════════ -->
+<!-- ═══ SCHEMA + FIXES ════════════════════════════════════════════════════════ -->
 <div class="page">
   <div class="page-header">
     <div class="page-header-brand">legibly</div>
-    <div class="page-header-domain">${esc(domain)}</div>
+    <div class="page-header-info">${esc(domain)}</div>
   </div>
-
-  ${fixesHTML}
-  ${schemaHTML}
-
+  ${schemaSection}
+  ${fixesSection}
   <div class="page-footer">
-    <span>legibly.dev — AI Visibility Report</span>
-    <span>Page 4</span>
+    <span>legibly.dev — AI Visibility Audit</span>
+    <span>Page 3 of 5</span>
   </div>
 </div>
 
-<!-- ═══════════════════════════════ LLMS.TXT PAGE ═══════════════════════════════ -->
-${llmstxtHTML ? `
+<!-- ═══ LLMS.TXT + ROADMAP ═══════════════════════════════════════════════════ -->
 <div class="page">
   <div class="page-header">
     <div class="page-header-brand">legibly</div>
-    <div class="page-header-domain">${esc(domain)}</div>
+    <div class="page-header-info">${esc(domain)}</div>
   </div>
-  ${llmstxtHTML}
 
-  <!-- Roadmap -->
-  <div class="section" style="margin-top:32px;">
-    <div class="section-header">
-      <span class="section-icon">📅</span>
-      <h2>30/60/90 Day Implementation Roadmap</h2>
+  ${llmsSection}
+
+  <!-- 30/60/90 Roadmap -->
+  <div>
+    <div class="section-rule">
+      <span class="section-num">06</span>
+      <span class="section-name">30 / 60 / 90 Day Roadmap</span>
     </div>
-    <div class="roadmap-grid">
-      <div class="roadmap-phase quick">
-        <div class="roadmap-phase-label">Quick Wins — Days 1–7</div>
-        <div class="roadmap-item">Upload llms.txt to site root</div>
-        <div class="roadmap-item">Fix robots.txt AI crawler blocks</div>
-        <div class="roadmap-item">Add Organization JSON-LD schema</div>
-        <div class="roadmap-item">Fix page title and meta description</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:4px;">
+      <div style="border:1.5px solid #1a6b2e;border-radius:5px;padding:14px;">
+        <div style="font-size:7pt;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#1a6b2e;margin-bottom:10px;">Days 1–7 — Quick Wins</div>
+        ${['Upload llms.txt to site root','Fix robots.txt AI crawler blocks','Add Organization JSON-LD schema','Fix page title and meta description'].map(i =>
+          `<div style="font-size:8.5pt;color:#1a1a1a;padding:4px 0;border-bottom:1px solid #e5e5e0;display:flex;gap:6px;align-items:flex-start;"><span style="color:#9ca3af;">→</span>${esc(i)}</div>`
+        ).join('')}
       </div>
-      <div class="roadmap-phase medium">
-        <div class="roadmap-phase-label">Medium Term — Days 8–30</div>
-        <div class="roadmap-item">Add Service/Product schema</div>
-        <div class="roadmap-item">Rewrite H1 with clear value statement</div>
-        <div class="roadmap-item">Add Open Graph tags</div>
-        <div class="roadmap-item">Fix image alt text</div>
+      <div style="border:1.5px solid #7a5c00;border-radius:5px;padding:14px;">
+        <div style="font-size:7pt;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#7a5c00;margin-bottom:10px;">Days 8–30 — Structural</div>
+        ${['Add Service/Product schema to key pages','Rewrite H1 with direct value statement','Add Open Graph tags (title, desc, image)','Fix image alt text site-wide'].map(i =>
+          `<div style="font-size:8.5pt;color:#1a1a1a;padding:4px 0;border-bottom:1px solid #e5e5e0;display:flex;gap:6px;align-items:flex-start;"><span style="color:#9ca3af;">→</span>${esc(i)}</div>`
+        ).join('')}
       </div>
-      <div class="roadmap-phase deep">
-        <div class="roadmap-phase-label">Deep Work — Days 31–90</div>
-        <div class="roadmap-item">Enable server-side rendering</div>
-        <div class="roadmap-item">Rewrite homepage with answer-first content</div>
-        <div class="roadmap-item">Build FAQ page with FAQPage schema</div>
-        <div class="roadmap-item">Add social sameAs links to schema</div>
+      <div style="border:1.5px solid #4a3080;border-radius:5px;padding:14px;">
+        <div style="font-size:7pt;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4a3080;margin-bottom:10px;">Days 31–90 — Deep Work</div>
+        ${['Enable server-side rendering','Rewrite homepage with answer-first content','Add FAQ page with FAQPage schema','Link social profiles via sameAs schema'].map(i =>
+          `<div style="font-size:8.5pt;color:#1a1a1a;padding:4px 0;border-bottom:1px solid #e5e5e0;display:flex;gap:6px;align-items:flex-start;"><span style="color:#9ca3af;">→</span>${esc(i)}</div>`
+        ).join('')}
       </div>
     </div>
   </div>
 
   <div class="page-footer">
-    <span>legibly.dev — AI Visibility Report</span>
-    <span>Page 5</span>
+    <span>legibly.dev — AI Visibility Audit</span>
+    <span>Page 4 of 5</span>
   </div>
-</div>` : ''}
+</div>
 
 </body>
 </html>`;
