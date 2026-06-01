@@ -293,7 +293,12 @@ function renderFullReport(data) {
             <div class="prompt-group">
               <span class="prompt-intent-label">${escapeHtml(INTENT_LABELS[intent] ?? intent)}</span>
               <ul class="prompt-list">
-                ${prompts.map(p => `<li>"${escapeHtml(p)}"</li>`).join('')}
+                ${prompts.map(p => {
+                  const text = typeof p === 'object' ? p.prompt : p;
+                  const type = typeof p === 'object' ? p.type : null;
+                  const tag = type ? `<span class="prompt-type prompt-type--${escapeHtml(type)}">${escapeHtml(type)}</span>` : '';
+                  return `<li>${tag}"${escapeHtml(text)}"</li>`;
+                }).join('')}
               </ul>
             </div>
           `).join('')}

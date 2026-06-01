@@ -497,6 +497,20 @@ button:focus-visible, input:focus-visible {
   margin-bottom: 0.5rem;
 }
 .prompt-list { list-style: none; display: flex; flex-direction: column; gap: 0.375rem; }
+.prompt-type {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-right: 0.375rem;
+  vertical-align: middle;
+}
+.prompt-type--rag        { background: color-mix(in srgb, var(--color-pass) 15%, transparent); color: var(--color-pass); }
+.prompt-type--parametric { background: color-mix(in srgb, var(--color-partial) 15%, transparent); color: var(--color-partial); }
+
 .prompt-list li {
   font-size: 0.875rem;
   color: var(--color-text);
