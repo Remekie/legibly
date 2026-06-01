@@ -1,9 +1,13 @@
 import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import { Resend } from 'resend';
 import { scan } from './scan/index.js';
+import { getCached, setCached, cacheSize } from './scan/cache.js';
 import { generateReport } from './report/index.js';
 import { generatePDF } from './report/pdf.js';
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
@@ -31,6 +35,8 @@ const scanLimiter = rateLimit({
 app.get('/health', (_req, res) => res.json({
   status: 'ok',
   anthropic: !!process.env.ANTHROPIC_API_KEY,
+  perplexity: !!process.env.PERPLEXITY_API_KEY,
+  cache: cacheSize(),
 }));
 
 app.post('/api/scan', scanLimiter, async (req, res) => {
@@ -52,12 +58,17 @@ app.post('/api/scan', scanLimiter, async (req, res) => {
   }
 
   try {
+    const cached = getCached(parsed.href);
+    if (cached) {
+      res.set('X-Cache', 'HIT');
+      return res.json(cached);
+    }
     const result = await scan(parsed.href);
+    setCached(parsed.href, result);
+    res.set('X-Cache', 'MISS');
     res.json(result);
   } catch (err) {
-    // Don't leak internal error details to client
     res.status(500).json({ error: 'Scan failed. Please try again.' });
-    // TODO: replace with structured logger (pino/winston) before prod
     process.stderr.write(`[scan error] ${err.message}\n`);
   }
 });

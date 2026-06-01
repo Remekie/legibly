@@ -32,7 +32,7 @@ export async function generateReport(url) {
     checkCitations(context.domain, promptsResult),
   ]);
 
-  const fixes = generateFixes(scanResult.signals, context);
+  const fixes = generateFixes(scanResult.signals, context, scanResult.sitePages);
 
   return {
     ...scanResult,
