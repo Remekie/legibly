@@ -1,5 +1,8 @@
+import Sentiment from 'sentiment';
+
 const PERPLEXITY_API = 'https://api.perplexity.ai/chat/completions';
 const MAX_PROMPTS = 6; // 3 awareness + 3 decision — keeps cost ~$0.03/report
+const sentiment = new Sentiment();
 
 export async function checkCitations(domain, prompts) {
   if (!process.env.PERPLEXITY_API_KEY) return null;
@@ -34,6 +37,20 @@ export async function checkCitations(domain, prompts) {
   }
 
   // Sort by frequency, return top 5
+  // Aggregate sentiment across prompts where brand appeared
+  const sentimentScores = checked
+    .filter(r => r.appearing && r.sentiment)
+    .map(r => r.sentiment.score);
+
+  const avgSentiment = sentimentScores.length > 0
+    ? sentimentScores.reduce((a, b) => a + b, 0) / sentimentScores.length
+    : null;
+
+  const sentimentLabel = avgSentiment === null ? null
+    : avgSentiment > 1  ? 'positive'
+    : avgSentiment < -1 ? 'negative'
+    : 'neutral';
+
   const topCompetitors = [...competitorCounts.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
@@ -44,8 +61,37 @@ export async function checkCitations(domain, prompts) {
     promptsTested: checked.length,
     promptsAppearing: appearing,
     visibilityRate: checked.length > 0 ? Math.round((appearing / checked.length) * 100) : 0,
+    sentiment: sentimentLabel,
+    sentimentScore: avgSentiment !== null ? Math.round(avgSentiment * 10) / 10 : null,
     results: checked,
     competitors: topCompetitors,
+  };
+}
+
+/**
+ * Score sentiment of sentences in the AI answer that mention the brand.
+ * Uses AFINN word list via the `sentiment` package.
+ * Returns { score, label, excerpt } or null if brand not mentioned.
+ */
+function scoreBrandSentiment(answerText, domainNorm) {
+  if (!answerText || !domainNorm) return null;
+
+  // Find sentences mentioning the brand (split on . ! ?)
+  const sentences = answerText.split(/[.!?]+/).map(s => s.trim()).filter(Boolean);
+  const brandSentences = sentences.filter(s =>
+    s.toLowerCase().includes(domainNorm) ||
+    s.toLowerCase().includes(domainNorm.split('.')[0]) // match brand name without TLD
+  );
+
+  if (brandSentences.length === 0) return null;
+
+  const combined = brandSentences.join('. ');
+  const result   = sentiment.analyze(combined);
+
+  return {
+    score:   result.score,
+    label:   result.score > 1 ? 'positive' : result.score < -1 ? 'negative' : 'neutral',
+    excerpt: brandSentences[0].slice(0, 150),
   };
 }
 
@@ -79,6 +125,9 @@ async function queryPerplexity(prompt, domain) {
     const inCitations = citations.some(c => String(c).toLowerCase().includes(domainNorm));
     const appearing  = inAnswer || inCitations;
 
+    // Sentiment: score the sentences that mention the brand
+    const brandSentiment = scoreBrandSentiment(answer, domainNorm);
+
     // Extract competitor domains: all cited domains that aren't the user's
     const competitors = citations
       .map(c => {
@@ -90,6 +139,7 @@ async function queryPerplexity(prompt, domain) {
     return {
       prompt,
       appearing,
+      sentiment: brandSentiment,
       citedSources: citations.slice(0, 5),
       competitors: [...new Set(competitors)],
       answerPreview: answer.slice(0, 200),

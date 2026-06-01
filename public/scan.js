@@ -366,6 +366,7 @@ function renderFullReport(data) {
         <div class="citation-score-row">
           <span class="citation-rate" style="color:${rateColor}">${c.promptsAppearing}/${c.promptsTested}</span>
           <span class="citation-label">prompts where your site appears — ${escapeHtml(rateLabel)}</span>
+          ${c.sentiment ? `<span class="sentiment-badge sentiment-badge--${escapeHtml(c.sentiment)}">${escapeHtml(c.sentiment)} mentions</span>` : ''}
         </div>
         <div class="citation-results">
           ${c.results.map(r => `

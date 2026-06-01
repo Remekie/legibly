@@ -26,6 +26,7 @@
     "puppeteer": "^24.15.0",
     "rankweave-geo-audit": "github:Remekie/rankweave-geo-audit",
     "resend": "^6.12.4",
+    "sentiment": "^5.0.2",
     "stripe": "^22.2.0",
     "vite-prerender-plugin": "github:preactjs/vite-prerender-plugin"
   },

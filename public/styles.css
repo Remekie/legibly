@@ -624,6 +624,19 @@ button:focus-visible, input:focus-visible {
 .verdict--win { color: var(--color-pass); }
 .verdict--miss { color: var(--color-muted); }
 
+.sentiment-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.sentiment-badge--positive { background: color-mix(in srgb, var(--color-pass) 15%, transparent); color: var(--color-pass); }
+.sentiment-badge--neutral  { background: color-mix(in srgb, var(--color-muted) 15%, transparent); color: var(--color-muted); }
+.sentiment-badge--negative { background: color-mix(in srgb, var(--color-fail) 15%, transparent); color: var(--color-fail); }
+
 .citation-competitors {
   margin-top: 0.25rem;
   font-size: 0.75rem;
