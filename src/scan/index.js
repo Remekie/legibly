@@ -5,14 +5,11 @@ import { checkSchema } from './schema.js';
 import { checkContent } from './content.js';
 import { checkBrandTrust } from './brandtrust.js';
 import { checkMetadata } from './metadata.js';
+import { checkSitePages } from './sitemapper.js';
 import { toGrade } from './grade.js';
 
 const FETCH_TIMEOUT_MS = 12_000;
 
-/**
- * Fetch the page HTML once and share it across schema, content, brandtrust, metadata.
- * Avoids 4 independent fetches that all hit rate limiting / Cloudflare together.
- */
 async function fetchSharedHtml(url) {
   try {
     const controller = new AbortController();
@@ -30,21 +27,40 @@ async function fetchSharedHtml(url) {
 }
 
 export async function scan(url) {
-  // Fetch page HTML once — shared by schema, content, brandtrust, metadata
-  const [prerender, robots, llmstxt, sharedHtml] = await Promise.all([
+  // Phase 1: parallel — prerender (Puppeteer), robots, llmstxt, shared HTML fetch, multi-page crawl
+  const [prerender, robots, llmstxt, sharedHtml, sitePages] = await Promise.all([
     checkPrerender(url),
     checkRobots(url),
     checkLlmstxt(url),
     fetchSharedHtml(url),
+    checkSitePages(url),
   ]);
 
-  // Run HTML-dependent signals in parallel using the shared fetch result
+  // Phase 2: HTML-dependent signals from shared fetch
   const [schema, content, eeat, metadata] = await Promise.all([
     checkSchema(url, sharedHtml),
     checkContent(url, sharedHtml),
     checkBrandTrust(url, sharedHtml),
     checkMetadata(url, sharedHtml),
   ]);
+
+  // Enrich schema signal with multi-page data
+  if (sitePages.aggregate && sitePages.pagesChecked > 1) {
+    const agg = sitePages.aggregate;
+    if (schema.score === 0 && agg.schemaScore === 0) {
+      schema.detail = `No structured data found across ${sitePages.pagesChecked} pages checked. AI is guessing what your business is and what you offer.`;
+    } else if (agg.schemaScore < 1) {
+      schema.siteWide = `${agg.schema} pages have structured data`;
+    }
+    metadata.siteWide = {
+      title:       agg.title,
+      description: agg.description,
+      h1:          agg.h1,
+      content:     agg.content,
+      oversized:   agg.oversized,
+      pagesChecked: sitePages.pagesChecked,
+    };
+  }
 
   const signals = {
     prerender, // 25%
@@ -58,5 +74,5 @@ export async function scan(url) {
 
   const { grade, score, blocker } = toGrade(signals);
 
-  return { url, grade, score, blocker, signals };
+  return { url, grade, score, blocker, signals, sitePages };
 }

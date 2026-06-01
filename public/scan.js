@@ -63,7 +63,7 @@ form.addEventListener('submit', async (e) => {
   }
 });
 
-function renderResult({ grade, score, blocker, signals }) {
+function renderResult({ grade, score, blocker, signals, sitePages }) {
   const gradeClass = `grade-${grade.toLowerCase()}`;
   const vis = signals.prerender;
   const visibilityPct = vis?.visibilityPct ?? null;
@@ -76,6 +76,7 @@ function renderResult({ grade, score, blocker, signals }) {
       <div class="score-label">AI Visibility Score: ${score}/100</div>
       ${visibilityPct !== null ? renderVisibilityGauge(visibilityPct, missingWordCount) : ''}
       ${blocker ? `<p class="blocker" role="alert">⚠️ ${escapeHtml(blocker)}</p>` : ''}
+      ${sitePages?.pagesChecked > 1 ? renderSitePagesSummary(sitePages) : ''}
 
       <ul class="signals" aria-label="Signal summary">
         ${Object.entries(signals).map(([key, s]) => renderSignalSummary(key, s)).join('')}
@@ -127,6 +128,38 @@ function renderResult({ grade, score, blocker, signals }) {
     });
   });
   document.addEventListener('click', closeAllTooltips, { once: false });
+}
+
+function renderSitePagesSummary({ pagesChecked, aggregate }) {
+  if (!aggregate) return '';
+  const { schema, title, description, h1, content, oversized } = aggregate;
+  const items = [
+    { label: 'Structured data', value: schema },
+    { label: 'Page titles', value: title },
+    { label: 'Meta descriptions', value: description },
+    { label: 'Clear headings', value: h1 },
+    { label: 'Sufficient content', value: content },
+  ];
+
+  const cells = items.map(({ label, value }) => {
+    const [pass, total] = value.split('/').map(Number);
+    const allPass = pass === total;
+    const nonePass = pass === 0;
+    const color = allPass ? 'var(--color-pass)' : nonePass ? 'var(--color-fail)' : 'var(--color-partial)';
+    return `<div class="site-stat">
+      <span class="site-stat-value" style="color:${color}">${escapeHtml(value)}</span>
+      <span class="site-stat-label">${escapeHtml(label)}</span>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="site-pages-summary" aria-label="Site-wide page checks">
+      <div class="site-pages-header">
+        <span class="site-pages-title">Site-wide check — ${pagesChecked} pages</span>
+        ${oversized > 0 ? `<span class="site-pages-warning">⚠ ${oversized} page${oversized > 1 ? 's' : ''} with oversized HTML</span>` : ''}
+      </div>
+      <div class="site-stats-row">${cells}</div>
+    </div>`;
 }
 
 function renderVisibilityGauge(pct, missingWords) {
