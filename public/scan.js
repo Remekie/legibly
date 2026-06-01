@@ -329,7 +329,7 @@ function renderFullReport(data) {
     sections.push(`
       <div class="report-section">
         <h3 class="report-section-title">📄 Your llms.txt File</h3>
-        <p class="report-section-sub">Upload this file to <strong>${escapeHtml(new URL(currentUrl).origin)}/llms.txt</strong> so AI engines have a plain-language guide to your site.</p>
+        <p class="report-section-sub">Upload this file to <strong>${escapeHtml(safeOrigin(currentUrl))}/llms.txt</strong> so AI engines have a plain-language guide to your site.</p>
         <div class="code-block-wrap">
           <pre class="code-block" id="llmstxt-content">${escapeHtml(report.llmstxt.content)}</pre>
           <div class="code-actions">
@@ -491,7 +491,7 @@ async function downloadPDF() {
     const blob = await res.blob();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `legibly-report-${new URL(currentUrl).hostname.replace('www.', '')}.pdf`;
+    a.download = `legibly-report-${safeOrigin(currentUrl).replace('https://','').replace('http://','')}.pdf`;
     a.click();
     btn.textContent = '⬇ Download PDF Report';
   } catch {
@@ -514,6 +514,10 @@ function setLoading(loading) {
 
 function showError(msg) { urlError.textContent = msg; urlError.hidden = false; }
 function clearError() { urlError.textContent = ''; urlError.hidden = true; }
+
+function safeOrigin(url) {
+  try { return new URL(url).origin; } catch { return url; }
+}
 
 function escapeHtml(str) {
   return String(str)
