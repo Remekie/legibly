@@ -11,6 +11,7 @@ const SIGNAL_LABELS = {
   llmstxt:   'llms.txt file',
   content:   'Answer-first content',
   eeat:      'Brand trust signals',
+  metadata:  'Page metadata',
 };
 
 const SIGNAL_TOOLTIPS = {
@@ -20,6 +21,7 @@ const SIGNAL_TOOLTIPS = {
   llmstxt:   'A simple text file at yoursite.com/llms.txt that tells AI models a plain-language summary of who you are and what you do.',
   content:   'AI citation engines favor pages that answer questions directly in the first few sentences — not pages that bury the answer after a long intro.',
   eeat:      'Experience, Expertise, Authoritativeness, Trustworthiness — the signals AI engines use to decide whether your business is credible enough to recommend.',
+  metadata:  'Your page title, meta description, and social share tags (og:title, og:description, og:image). These are the first things AI engines read to understand what your page is about.',
 };
 
 form.addEventListener('submit', async (e) => {

@@ -3,8 +3,9 @@ const WEIGHTS = {
   robots:    0.20,
   schema:    0.15,
   llmstxt:   0.15,
-  content:   0.15,
-  eeat:      0.10,
+  content:   0.13,
+  eeat:      0.09,
+  metadata:  0.13,
 };
 
 const MAX_SIGNAL_SCORE = 10;
