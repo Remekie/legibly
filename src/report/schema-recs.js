@@ -1,18 +1,19 @@
 import * as cheerio from 'cheerio';
 
+// Order matters — more specific signals first, fallback to service
 const PAGE_TYPE_SIGNALS = {
-  product:  /product|shop|buy|price|add to cart|checkout/i,
-  faq:      /faq|frequently asked|questions and answers/i,
-  blog:     /blog|article|post|news|published|author/i,
-  local:    /location|hours|directions|address|phone|call us/i,
-  service:  /service|we offer|our work|what we do|hire us|contact us/i,
+  product: /\badd to cart\b|\bbuy now\b|\bshop now\b|\bcheckout\b|\bin stock\b/i,
+  faq:     /\bfaq\b|frequently asked questions|questions and answers/i,
+  local:   /\bstore hours\b|\bget directions\b|\bvisit us\b|\bour location\b|\bcall us\b/i,
+  blog:    /\bblog post\b|\bpublished on\b|\bwritten by\b|\bread more\b|\bminutes read\b/i,
+  service: /we offer|our services|what we do|hire us|let.s connect|get started|our work|contact us/i,
 };
 
 const SCHEMA_TEMPLATES = {
   LocalBusiness: (ctx) => ({
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
-    name: ctx.title.split('|')[0].trim(),
+    name: extractBrandName(ctx.title),
     description: ctx.description || ctx.h1,
     url: ctx.url,
     ...(ctx.location ? { address: { '@type': 'PostalAddress', addressLocality: ctx.location } } : {}),
@@ -21,7 +22,7 @@ const SCHEMA_TEMPLATES = {
   Organization: (ctx) => ({
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: ctx.title.split('|')[0].trim(),
+    name: extractBrandName(ctx.title),
     description: ctx.description || ctx.h1,
     url: ctx.url,
     sameAs: [],
@@ -59,9 +60,9 @@ const SCHEMA_TEMPLATES = {
   Service: (ctx) => ({
     '@context': 'https://schema.org',
     '@type': 'Service',
-    name: ctx.h1 || ctx.title.split('|')[0].trim(),
+    name: ctx.h1 || extractBrandName(ctx.title),
     description: ctx.description,
-    provider: { '@type': 'Organization', name: ctx.title.split('|')[0].trim() },
+    provider: { '@type': 'Organization', name: extractBrandName(ctx.title) },
   }),
 };
 
@@ -110,6 +111,14 @@ export function generateSchemaRecs(context, existingSchemaTypes = []) {
   }
 
   return { pageType, recommendations };
+}
+
+function extractBrandName(title) {
+  // "Brand Name | Description" or "Description - Brand Name" or "Brand Name"
+  const parts = title.split(/[|\-—]/).map(s => s.trim()).filter(Boolean);
+  // Prefer the shortest segment that looks like a brand (not a sentence)
+  const short = parts.find(p => p.split(' ').length <= 4);
+  return short ?? parts[parts.length - 1] ?? title;
 }
 
 function reasonFor(type, pageType) {
