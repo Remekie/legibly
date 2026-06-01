@@ -1,26 +1,14 @@
 import * as cheerio from 'cheerio';
 
-const FETCH_TIMEOUT_MS = 10_000;
 const ORG_TYPES = new Set(['Organization', 'Corporation', 'LocalBusiness', 'ProfessionalService']);
 
-export async function checkBrandTrust(url) {
+export async function checkBrandTrust(url, html = null) {
+  if (!html) {
+    return { score: 0, detail: 'Could not reach page to check brand trust signals.' };
+  }
+
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-
-    if (!res.ok) {
-      return { score: 0, detail: 'Could not fetch page to check brand trust signals.' };
-    }
-
-    const html = await res.text();
     const $ = cheerio.load(html);
-
     let hasOrgSchema = false;
     let hasSameAs = false;
 
@@ -30,13 +18,9 @@ export async function checkBrandTrust(url) {
         const types = [].concat(data['@type'] ?? []);
         if (types.some(t => ORG_TYPES.has(t))) {
           hasOrgSchema = true;
-          if (data.sameAs && [].concat(data.sameAs).length > 0) {
-            hasSameAs = true;
-          }
+          if ([].concat(data.sameAs ?? []).length > 0) hasSameAs = true;
         }
-      } catch {
-        // malformed JSON-LD
-      }
+      } catch { /* malformed */ }
     });
 
     if (hasOrgSchema && hasSameAs) {
@@ -58,9 +42,6 @@ export async function checkBrandTrust(url) {
       detail: "AI has no way to verify your business exists beyond this page.",
     };
   } catch {
-    return {
-      score: 0,
-      detail: 'Could not check brand trust signals — site may be blocking automated requests.',
-    };
+    return { score: 0, detail: 'Could not parse brand trust signals.' };
   }
 }

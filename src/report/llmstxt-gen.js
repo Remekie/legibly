@@ -88,8 +88,8 @@ async function fetchSitemapPages(origin) {
 
       const xml = await res.text();
       const urls = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)]
-        .map(m => m[1].trim())
-        .filter(u => u.startsWith('http'))
+        .map(m => m[1].trim().replace(/&amp;/g, '&'))
+        .filter(u => { try { return u.startsWith('http') && !!new URL(u); } catch { return false; } })
         .slice(0, MAX_PAGES);
 
       if (urls.length === 0) continue;
@@ -112,12 +112,16 @@ async function fetchSitemapPages(origin) {
 }
 
 function urlToLabel(url) {
-  const path = new URL(url).pathname;
-  return path
-    .replace(/\/$/, '')
-    .split('/')
-    .filter(Boolean)
-    .pop()
-    ?.replace(/-/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase()) ?? url;
+  try {
+    const path = new URL(url).pathname;
+    return path
+      .replace(/\/$/, '')
+      .split('/')
+      .filter(Boolean)
+      .pop()
+      ?.replace(/-/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase()) ?? url;
+  } catch {
+    return url;
+  }
 }
