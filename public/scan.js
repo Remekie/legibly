@@ -44,7 +44,7 @@ form.addEventListener('submit', async (e) => {
 
   setLoading(true);
   resultSection.hidden = true;
-  currentUrl = raw;
+  currentUrl = raw.startsWith('http') ? raw : `https://${raw}`;
 
   try {
     const res = await fetch('/api/scan', {
