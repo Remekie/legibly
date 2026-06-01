@@ -28,13 +28,14 @@ async function fetchSharedHtml(url) {
 
 export async function scan(url) {
   // Phase 1: parallel — prerender (Puppeteer), robots, llmstxt, shared HTML fetch, multi-page crawl
-  const [prerender, robots, llmstxt, sharedHtml, sitePages] = await Promise.all([
+  const [prerender, robots, llmstxt, sharedHtml, sitePagesResult] = await Promise.all([
     checkPrerender(url),
     checkRobots(url),
     checkLlmstxt(url),
     fetchSharedHtml(url),
-    checkSitePages(url),
+    checkSitePages(url).catch(() => ({ pagesChecked: 0, pageResults: [], aggregate: null })),
   ]);
+  const sitePages = sitePagesResult;
 
   // Phase 2: HTML-dependent signals from shared fetch
   const [schema, content, eeat, metadata] = await Promise.all([

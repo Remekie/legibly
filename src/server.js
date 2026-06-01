@@ -69,7 +69,7 @@ app.post('/api/scan', scanLimiter, async (req, res) => {
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: 'Scan failed. Please try again.' });
-    process.stderr.write(`[scan error] ${err.message}\n`);
+    process.stderr.write(`[scan error] ${err.message}\n${err.stack}\n`);
   }
 });
 

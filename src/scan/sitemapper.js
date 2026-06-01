@@ -1,7 +1,7 @@
 import * as cheerio from 'cheerio';
 
 const FETCH_TIMEOUT_MS = 10_000;
-const MAX_PAGES = 8; // check up to 8 pages beyond homepage
+const MAX_PAGES = 3; // check up to 3 pages beyond homepage — keep memory footprint small
 
 /**
  * Fetch and check multiple pages for a site.
