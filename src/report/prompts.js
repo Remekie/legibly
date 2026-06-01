@@ -29,13 +29,17 @@ Content excerpt: ${bodyText.slice(0, 800)}
 ${location ? `Location: ${location}` : ''}
 
 Generate exactly 12 prompts this page should be winning in AI search.
+Also tag each prompt as "rag" (Perplexity/Google AI Overviews — live web search, results in days)
+or "parametric" (ChatGPT/Claude — training data, results in 3-6 months).
+Awareness/comparison prompts are usually parametric. Decision/use-case prompts often trigger RAG.
+
 Return JSON in this exact shape:
 {
-  "awareness": ["prompt1", "prompt2"],
-  "comparison": ["prompt1", "prompt2"],
-  "decision": ["prompt1", "prompt2"],
-  "usecase": ["prompt1", "prompt2", "prompt3"],
-  "postpurchase": ["prompt1", "prompt2", "prompt3"]
+  "awareness": [{"prompt": "...", "type": "parametric"}, {"prompt": "...", "type": "parametric"}],
+  "comparison": [{"prompt": "...", "type": "parametric"}, {"prompt": "...", "type": "parametric"}],
+  "decision": [{"prompt": "...", "type": "rag"}, {"prompt": "...", "type": "rag"}],
+  "usecase": [{"prompt": "...", "type": "rag"}, {"prompt": "...", "type": "rag"}, {"prompt": "...", "type": "parametric"}],
+  "postpurchase": [{"prompt": "...", "type": "parametric"}, {"prompt": "...", "type": "parametric"}, {"prompt": "...", "type": "rag"}]
 }`;
 
   const message = await client.messages.create({

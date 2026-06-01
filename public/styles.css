@@ -580,6 +580,35 @@ button:focus-visible, input:focus-visible {
 .fix-note { font-size: 0.8rem; color: var(--color-muted); margin-top: 0.375rem; font-style: italic; }
 .report-error { color: var(--color-fail); font-size: 0.9rem; padding: 1rem 0; }
 
+/* Citation monitoring */
+.citation-score-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.citation-rate { font-size: 2rem; font-weight: 900; line-height: 1; }
+.citation-label { font-size: 0.875rem; color: var(--color-muted); }
+.citation-results { display: flex; flex-direction: column; gap: 0.5rem; }
+.citation-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.625rem 0.875rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.citation-row--win { border-color: color-mix(in srgb, var(--color-pass) 30%, transparent); }
+.citation-row--miss { border-color: color-mix(in srgb, var(--color-fail) 20%, transparent); }
+.citation-icon { font-weight: 700; width: 1.25rem; flex-shrink: 0; font-size: 0.9rem; }
+.citation-row--win .citation-icon { color: var(--color-pass); }
+.citation-row--miss .citation-icon { color: var(--color-fail); }
+.citation-prompt { font-size: 0.875rem; color: var(--color-text); font-style: italic; margin-bottom: 0.25rem; }
+.citation-verdict { font-size: 0.78rem; }
+.verdict--win { color: var(--color-pass); }
+.verdict--miss { color: var(--color-muted); }
+
 .btn-pdf {
   background: var(--color-accent);
   border: none;

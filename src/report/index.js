@@ -4,13 +4,9 @@ import { generatePrompts } from './prompts.js';
 import { generateSchemaRecs } from './schema-recs.js';
 import { generateLlmstxt } from './llmstxt-gen.js';
 import { generateFixes } from './fixes.js';
+import { checkCitations } from './citations.js';
 
-/**
- * Generate a full report for a URL.
- * Runs scan + all report sections in parallel where possible.
- */
 export async function generateReport(url) {
-  // Run scan and page context extraction in parallel
   const [scanResult, context] = await Promise.all([
     scan(url),
     extractContext(url).catch(() => null),
@@ -20,16 +16,20 @@ export async function generateReport(url) {
     return { ...scanResult, report: null, error: 'Could not fetch page content for report.' };
   }
 
-  // Extract existing schema types from scan result for schema recs
   const existingSchemaTypes = scanResult.signals.schema?.types ?? [];
 
-  // Run all report sections in parallel
-  const [prompts, schemaRecs, llmstxt] = await Promise.allSettled([
+  // Generate prompts first — citations depend on them
+  const promptsResult = await (
     process.env.ANTHROPIC_API_KEY
-      ? generatePrompts(context)
-      : Promise.resolve(null),
+      ? generatePrompts(context).catch(() => null)
+      : Promise.resolve(null)
+  );
+
+  // Run remaining sections + citations in parallel
+  const [schemaRecs, llmstxt, citations] = await Promise.allSettled([
     Promise.resolve(generateSchemaRecs(context, existingSchemaTypes)),
     generateLlmstxt(url),
+    checkCitations(context.domain, promptsResult),
   ]);
 
   const fixes = generateFixes(scanResult.signals, context);
@@ -42,9 +42,10 @@ export async function generateReport(url) {
       domain: context.domain,
     },
     report: {
-      prompts:    prompts.status    === 'fulfilled' ? prompts.value    : null,
-      schemaRecs: schemaRecs.status === 'fulfilled' ? schemaRecs.value : null,
-      llmstxt:    llmstxt.status    === 'fulfilled' ? llmstxt.value    : null,
+      prompts:    promptsResult,
+      schemaRecs: schemaRecs.status  === 'fulfilled' ? schemaRecs.value  : null,
+      llmstxt:    llmstxt.status     === 'fulfilled' ? llmstxt.value     : null,
+      citations:  citations.status   === 'fulfilled' ? citations.value   : null,
       fixes,
     },
   };

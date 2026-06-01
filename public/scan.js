@@ -341,6 +341,38 @@ function renderFullReport(data) {
     `);
   }
 
+  // Citation monitoring
+  if (report.citations) {
+    const c = report.citations;
+    const rateColor = c.visibilityRate >= 50 ? 'var(--color-pass)' : c.visibilityRate > 0 ? 'var(--color-partial)' : 'var(--color-fail)';
+    const rateLabel = c.visibilityRate >= 50 ? 'appearing in AI results'
+      : c.visibilityRate > 0 ? 'appearing in some AI results'
+      : 'not appearing in any tested AI results';
+
+    sections.push(`
+      <div class="report-section">
+        <h3 class="report-section-title">Are You Winning These Prompts?</h3>
+        <p class="report-section-sub">We ran your top prompts through Perplexity AI and checked if <strong>${escapeHtml(c.domain)}</strong> appears in the answers. These are real queries your customers are typing.</p>
+        <div class="citation-score-row">
+          <span class="citation-rate" style="color:${rateColor}">${c.promptsAppearing}/${c.promptsTested}</span>
+          <span class="citation-label">prompts where your site appears — ${escapeHtml(rateLabel)}</span>
+        </div>
+        <div class="citation-results">
+          ${c.results.map(r => `
+            <div class="citation-row ${r.appearing ? 'citation-row--win' : 'citation-row--miss'}">
+              <span class="citation-icon">${r.appearing ? '✓' : '✗'}</span>
+              <div class="citation-detail">
+                <div class="citation-prompt">"${escapeHtml(r.prompt)}"</div>
+                <div class="citation-verdict ${r.appearing ? 'verdict--win' : 'verdict--miss'}">
+                  ${r.appearing ? 'Your site appears in this AI answer' : 'Your site does not appear — competitors are winning this prompt'}
+                </div>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>
+    `);
+  }
+
   // Fix instructions
   const fixes = report.fixes ?? {};
   const fixKeys = Object.keys(fixes);
