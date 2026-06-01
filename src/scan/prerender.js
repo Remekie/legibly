@@ -7,11 +7,18 @@ const TIMEOUT_MS = 15_000;
 export async function checkPrerender(url) {
   let browser;
   try {
-    browser = await puppeteer.launch({
+    const launchOpts = {
       headless: true,
-      executablePath: process.env.CHROMIUM_PATH || undefined,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+    };
+    // Only set executablePath if CHROMIUM_PATH is set AND the file exists
+    if (process.env.CHROMIUM_PATH) {
+      const { existsSync } = await import('fs');
+      if (existsSync(process.env.CHROMIUM_PATH)) {
+        launchOpts.executablePath = process.env.CHROMIUM_PATH;
+      }
+    }
+    browser = await puppeteer.launch(launchOpts);
 
     // Fetch human view and bot view in parallel using two tabs
     const [botResult, humanHtml] = await Promise.all([

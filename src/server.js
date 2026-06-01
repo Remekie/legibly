@@ -32,12 +32,27 @@ const scanLimiter = rateLimit({
   message: { error: 'Too many requests. Please wait a minute.' },
 });
 
-app.get('/health', (_req, res) => res.json({
-  status: 'ok',
-  anthropic: !!process.env.ANTHROPIC_API_KEY,
-  perplexity: !!process.env.PERPLEXITY_API_KEY,
-  cache: cacheSize(),
-}));
+app.get('/health', async (_req, res) => {
+  const { execSync } = await import('child_process');
+  let chromiumPath = process.env.CHROMIUM_PATH ?? 'not set';
+  let chromiumExists = false;
+  try {
+    const { existsSync } = await import('fs');
+    chromiumExists = chromiumPath !== 'not set' && existsSync(chromiumPath);
+    if (!chromiumExists) {
+      // Try to find system chromium
+      try { chromiumPath = execSync('which chromium || which chromium-browser || which google-chrome', { encoding: 'utf8' }).trim(); chromiumExists = true; } catch { /* not found */ }
+    }
+  } catch { /* ignore */ }
+  res.json({
+    status: 'ok',
+    anthropic: !!process.env.ANTHROPIC_API_KEY,
+    perplexity: !!process.env.PERPLEXITY_API_KEY,
+    cache: cacheSize(),
+    chromiumPath,
+    chromiumExists,
+  });
+});
 
 app.post('/api/scan', scanLimiter, async (req, res) => {
   const { url } = req.body ?? {};
