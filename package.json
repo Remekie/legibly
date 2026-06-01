@@ -12,6 +12,7 @@
     "lint": "eslint src/"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.100.1",
     "@glincker/geo-audit": "^0.4.0",
     "@glincker/geo-seo": "^0.4.0",
     "cheerio": "^1.2.0",
