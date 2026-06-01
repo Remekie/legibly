@@ -156,7 +156,7 @@ function renderBreakdownRow(key, signal) {
       <div class="breakdown-row breakdown-row--stub">
         <div class="breakdown-row-header">
           <span class="breakdown-icon" aria-hidden="true">·</span>
-          <span class="breakdown-label">${escapeHtml(label)}</span>
+          <span class="breakdown-label">${escapeHtml(label)}${infoBtn(key)}</span>
           <span class="breakdown-badge badge--stub">Full report</span>
         </div>
         <p class="breakdown-detail">Deeper analysis available in the complete report.</p>
