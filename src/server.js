@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { scan } from './scan/index.js';
 import { generateReport } from './report/index.js';
+import { generatePDF } from './report/pdf.js';
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
@@ -85,6 +86,46 @@ app.post('/api/report', reportLimiter, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Report generation failed. Please try again.' });
     process.stderr.write(`[report error] ${err.message}\n`);
+  }
+});
+
+const pdfLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'PDF generation limit reached. Please wait 5 minutes.' },
+});
+
+app.post('/api/report/pdf', pdfLimiter, async (req, res) => {
+  const { url } = req.body ?? {};
+
+  if (!url || typeof url !== 'string') return res.status(400).json({ error: 'url is required' });
+
+  let parsed;
+  try {
+    parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
+  } catch {
+    return res.status(400).json({ error: 'Invalid URL' });
+  }
+
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    return res.status(400).json({ error: 'URL must use http or https' });
+  }
+
+  try {
+    const reportData = await generateReport(parsed.href);
+    const pdf = await generatePDF(reportData);
+    const filename = `legibly-report-${parsed.hostname.replace('www.', '')}.pdf`;
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': pdf.length,
+    });
+    res.send(pdf);
+  } catch (err) {
+    res.status(500).json({ error: 'PDF generation failed. Please try again.' });
+    process.stderr.write(`[pdf error] ${err.message}\n`);
   }
 });
 

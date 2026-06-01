@@ -196,6 +196,14 @@ async function fetchFullReport() {
     loading.hidden = true;
     btn.textContent = 'Report generated ✓';
     content.innerHTML = renderFullReport(data);
+
+    // Add PDF download button
+    const pdfRow = document.createElement('div');
+    pdfRow.className = 'report-cta-row';
+    pdfRow.innerHTML = `<button class="btn-pdf" id="pdf-btn">⬇ Download PDF Report</button>`;
+    content.prepend(pdfRow);
+    document.getElementById('pdf-btn').addEventListener('click', () => downloadPDF());
+
     content.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     // Wire copy buttons
@@ -403,6 +411,30 @@ function renderBreakdownRow(key, signal) {
     </div>
     <p class="breakdown-detail">${escapeHtml(signal.detail ?? '')}</p>
   </div>`;
+}
+
+async function downloadPDF() {
+  const btn = document.getElementById('pdf-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating PDF…';
+  try {
+    const res = await fetch('/api/report/pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: currentUrl }),
+    });
+    if (!res.ok) throw new Error('PDF generation failed');
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `legibly-report-${new URL(currentUrl).hostname.replace('www.', '')}.pdf`;
+    a.click();
+    btn.textContent = '⬇ Download PDF Report';
+  } catch {
+    btn.textContent = 'PDF failed — try again';
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function closeAllTooltips() {
