@@ -196,6 +196,8 @@ button:focus-visible, input:focus-visible {
 
 .signal-label { font-weight: 600; }
 .signal-detail { color: var(--color-muted); font-size: 0.8rem; grid-column: 2; }
+.signal--stub .signal-icon { color: var(--color-muted); }
+.signal--stub .signal-label { color: var(--color-muted); font-weight: 400; }
 
 /* CTA */
 .cta-row { text-align: center; }
@@ -216,6 +218,70 @@ button:focus-visible, input:focus-visible {
 .btn-primary:focus-visible {
   outline: 3px solid var(--color-accent);
   outline-offset: 3px;
+}
+
+/* Breakdown panel */
+.breakdown-panel {
+  border-top: 1px solid var(--color-border);
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+}
+
+.breakdown-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--color-text);
+}
+
+.breakdown-row {
+  padding: 0.875rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.breakdown-row:last-of-type { border-bottom: none; }
+
+.breakdown-row-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.375rem;
+}
+
+.breakdown-icon { font-weight: 700; width: 1.25rem; flex-shrink: 0; }
+.breakdown-row--pass .breakdown-icon  { color: var(--color-pass); }
+.breakdown-row--fail .breakdown-icon  { color: var(--color-fail); }
+.breakdown-row--partial .breakdown-icon { color: var(--color-partial); }
+.breakdown-row--stub .breakdown-icon  { color: var(--color-muted); }
+
+.breakdown-label { font-weight: 600; font-size: 0.9rem; flex: 1; }
+.breakdown-row--stub .breakdown-label { color: var(--color-muted); font-weight: 400; }
+
+.breakdown-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.badge--pass    { background: color-mix(in srgb, var(--color-pass) 15%, transparent); color: var(--color-pass); }
+.badge--fail    { background: color-mix(in srgb, var(--color-fail) 15%, transparent); color: var(--color-fail); }
+.badge--partial { background: color-mix(in srgb, var(--color-partial) 15%, transparent); color: var(--color-partial); }
+.badge--stub    { background: color-mix(in srgb, var(--color-muted) 15%, transparent); color: var(--color-muted); }
+
+.breakdown-detail {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+  padding-left: 1.75rem;
+  line-height: 1.5;
+}
+
+.breakdown-note {
+  margin-top: 1.25rem;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  font-style: italic;
+  text-align: center;
 }
 
 /* Responsive */

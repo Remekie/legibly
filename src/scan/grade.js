@@ -11,12 +11,19 @@ const MAX_SIGNAL_SCORE = 10;
 
 /**
  * Convert signal scores to a weighted A–F grade.
- * Any signal with score === 0 AND marked as a blocker produces an immediate blocker line.
+ * Stub signals are excluded from scoring — only live signals count.
+ * Weights are renormalized across live signals so the grade stays meaningful.
  */
 export function toGrade(signals) {
+  const liveEntries = Object.entries(signals).filter(([, s]) => !s.stub);
+
+  // Renormalize weights across live signals only
+  const totalWeight = liveEntries.reduce((sum, [key]) => sum + (WEIGHTS[key] ?? 0), 0);
+
   let weighted = 0;
-  for (const [key, signal] of Object.entries(signals)) {
-    weighted += (signal.score / MAX_SIGNAL_SCORE) * (WEIGHTS[key] ?? 0);
+  for (const [key, signal] of liveEntries) {
+    const normalizedWeight = (WEIGHTS[key] ?? 0) / totalWeight;
+    weighted += (signal.score / MAX_SIGNAL_SCORE) * normalizedWeight;
   }
 
   const score = Math.round(weighted * 100);
@@ -27,10 +34,10 @@ export function toGrade(signals) {
     score >= 60 ? 'C' :
     score >= 45 ? 'D' : 'F';
 
-  // Surface the most severe blocker first
+  // Surface the most severe blocker from live signals only
   const blocker =
-    signals.prerender?.score === 0 ? signals.prerender.detail :
-    signals.robots?.score === 0    ? signals.robots.detail    :
+    signals.prerender?.score === 0 && !signals.prerender?.stub ? signals.prerender.detail :
+    signals.robots?.score === 0    && !signals.robots?.stub    ? signals.robots.detail    :
     null;
 
   return { grade, score, blocker };

@@ -1,13 +1,6 @@
-// Known AI crawler user-agents to check in robots.txt
-const AI_BOTS = ['GPTBot', 'ClaudeBot', 'Claude-Web', 'PerplexityBot', 'OAI-SearchBot', 'Googlebot-Extended'];
-
-const CLOUDFLARE_AI_BLOCK_HEADER = 'cf-aibm'; // Cloudflare "Block AI Scrapers" sets this
+const AI_BOTS = ['GPTBot', 'ClaudeBot', 'Claude-Web', 'PerplexityBot', 'OAI-SearchBot', 'Google-Extended', 'Googlebot-Extended'];
 const FETCH_TIMEOUT_MS = 10_000;
 
-/**
- * Fetch robots.txt and response headers.
- * Detect if any AI crawler is disallowed, or if Cloudflare bot-fight mode blocks them.
- */
 export async function checkRobots(url) {
   const origin = new URL(url).origin;
   const robotsUrl = `${origin}/robots.txt`;
@@ -27,34 +20,38 @@ export async function checkRobots(url) {
 
     robotsTxt = await res.text();
 
-    // Cloudflare sets x-robots-tag: noindex for blocked bots, or cf-aibm header
-    const cfHeader = res.headers.get(CLOUDFLARE_AI_BLOCK_HEADER);
+    // Cloudflare "Block AI Scrapers" toggle sets this header or noai tag
+    const cfHeader = res.headers.get('cf-aibm');
     const xRobots = res.headers.get('x-robots-tag') ?? '';
     cloudflareBlocking = !!cfHeader || xRobots.includes('noai');
   } catch {
-    // Network error or timeout — treat as unknown, not blocked
+    // Network timeout or error — treat as unknown
   }
 
   const blockedBots = parseBlockedBots(robotsTxt);
   const allBlocked = blockedBots.includes('*');
   const aiBlocked = allBlocked || AI_BOTS.some(b => blockedBots.includes(b));
 
-  if (cloudflareBlocking) {
+  // Cloudflare Managed Content auto-blocks — detected via header or robots entries
+  const isCloudflareManagedBlock =
+    cloudflareBlocking ||
+    (robotsTxt.includes('Cloudflare Managed') && aiBlocked);
+
+  if (isCloudflareManagedBlock) {
     return {
       score: 0,
       blockedBots,
       cloudflareBlocking: true,
-      detail: 'Cloudflare is blocking all AI crawlers. Toggle "Block AI Scrapers" OFF in Cloudflare Dashboard → Security → Bots.',
+      detail: 'Your site is completely blocked from AI search. ChatGPT and Claude cannot see any of your content.',
     };
   }
 
   if (aiBlocked) {
-    const names = allBlocked ? 'all bots' : blockedBots.filter(b => AI_BOTS.includes(b)).join(', ');
     return {
       score: 0,
       blockedBots,
       cloudflareBlocking: false,
-      detail: `robots.txt blocks ${names} — AI crawlers cannot access this site`,
+      detail: "Your site is actively telling AI to stay out. You're invisible to every AI search engine.",
     };
   }
 
@@ -62,7 +59,7 @@ export async function checkRobots(url) {
     score: 8,
     blockedBots: [],
     cloudflareBlocking: false,
-    detail: 'AI crawlers are allowed',
+    detail: 'No AI blocks detected ✓',
   };
 }
 

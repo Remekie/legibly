@@ -13,26 +13,16 @@ export async function scan(url) {
     checkRobots(url),
   ]);
 
-  // Remaining 4 signals (geo-audit, llmstxt, content, eeat) — Week 1 stubs
   const signals = {
-    prerender,   // 25%
-    robots,      // 20%
-    schema:      { score: 0, detail: 'Not yet implemented' },  // 15%
-    llmstxt:     { score: 0, detail: 'Not yet implemented' },  // 15%
-    content:     { score: 0, detail: 'Not yet implemented' },  // 15%
-    eeat:        { score: 0, detail: 'Not yet implemented' },  // 10%
+    prerender,                                                          // 25%
+    robots,                                                             // 20%
+    schema:  { score: 0, stub: true, detail: 'Coming in full report' }, // 15%
+    llmstxt: { score: 0, stub: true, detail: 'Coming in full report' }, // 15%
+    content: { score: 0, stub: true, detail: 'Coming in full report' }, // 15%
+    eeat:    { score: 0, stub: true, detail: 'Coming in full report' }, // 10%
   };
 
   const { grade, score, blocker } = toGrade(signals);
 
   return { url, grade, score, blocker, signals };
 }
-
-/**
- * @typedef {Object} ScanResult
- * @property {string} url
- * @property {string} grade  - A | B | C | D | F
- * @property {number} score  - 0–100
- * @property {string|null} blocker - Plain-English blocker line, or null
- * @property {Object} signals
- */
