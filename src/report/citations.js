@@ -1,15 +1,6 @@
 const PERPLEXITY_API = 'https://api.perplexity.ai/chat/completions';
 const MAX_PROMPTS = 6; // 3 awareness + 3 decision — keeps cost ~$0.03/report
 
-/**
- * Check if the scanned domain appears in Perplexity AI responses
- * for the prompts it should be winning.
- *
- * Uses the generated prompts from generatePrompts() — takes first 3 awareness
- * and first 3 decision prompts as test queries.
- *
- * Returns null if PERPLEXITY_API_KEY is not set.
- */
 export async function checkCitations(domain, prompts) {
   if (!process.env.PERPLEXITY_API_KEY) return null;
   if (!prompts) return null;
@@ -22,7 +13,10 @@ export async function checkCitations(domain, prompts) {
   if (testPrompts.length === 0) return null;
 
   const results = await Promise.allSettled(
-    testPrompts.map(prompt => queryPerplexity(prompt, domain))
+    testPrompts.map(p => {
+      const text = typeof p === 'object' ? p.prompt : p;
+      return queryPerplexity(text, domain);
+    })
   );
 
   const checked = results
@@ -31,12 +25,27 @@ export async function checkCitations(domain, prompts) {
 
   const appearing = checked.filter(r => r.appearing).length;
 
+  // Aggregate competitor domains appearing across all prompts
+  const competitorCounts = new Map();
+  for (const result of checked) {
+    for (const competitor of result.competitors ?? []) {
+      competitorCounts.set(competitor, (competitorCounts.get(competitor) ?? 0) + 1);
+    }
+  }
+
+  // Sort by frequency, return top 5
+  const topCompetitors = [...competitorCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([competitor, count]) => ({ domain: competitor, appearances: count, total: checked.length }));
+
   return {
     domain,
     promptsTested: checked.length,
     promptsAppearing: appearing,
     visibilityRate: checked.length > 0 ? Math.round((appearing / checked.length) * 100) : 0,
     results: checked,
+    competitors: topCompetitors,
   };
 }
 
@@ -59,29 +68,33 @@ async function queryPerplexity(prompt, domain) {
     });
 
     clearTimeout(timer);
-    if (!res.ok) return { prompt, appearing: false, citedSources: [], error: res.status };
+    if (!res.ok) return { prompt, appearing: false, citedSources: [], competitors: [], error: res.status };
 
     const data = await res.json();
     const answer = data.choices?.[0]?.message?.content ?? '';
-
-    // Extract cited sources from response
     const citations = data.citations ?? [];
     const domainNorm = domain.replace('www.', '').toLowerCase();
 
-    // Check if domain appears in answer text OR cited sources
-    const inAnswer = answer.toLowerCase().includes(domainNorm);
-    const inCitations = citations.some(c =>
-      String(c).toLowerCase().includes(domainNorm)
-    );
-    const appearing = inAnswer || inCitations;
+    const inAnswer   = answer.toLowerCase().includes(domainNorm);
+    const inCitations = citations.some(c => String(c).toLowerCase().includes(domainNorm));
+    const appearing  = inAnswer || inCitations;
+
+    // Extract competitor domains: all cited domains that aren't the user's
+    const competitors = citations
+      .map(c => {
+        try { return new URL(String(c)).hostname.replace('www.', '').toLowerCase(); }
+        catch { return null; }
+      })
+      .filter(h => h && h !== domainNorm && !h.includes('wikipedia') && !h.includes('reddit'));
 
     return {
       prompt,
       appearing,
       citedSources: citations.slice(0, 5),
+      competitors: [...new Set(competitors)],
       answerPreview: answer.slice(0, 200),
     };
   } catch (err) {
-    return { prompt, appearing: false, citedSources: [], error: err.message };
+    return { prompt, appearing: false, citedSources: [], competitors: [], error: err.message };
   }
 }

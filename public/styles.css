@@ -624,6 +624,60 @@ button:focus-visible, input:focus-visible {
 .verdict--win { color: var(--color-pass); }
 .verdict--miss { color: var(--color-muted); }
 
+.citation-competitors {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
+.competitor-tag {
+  background: color-mix(in srgb, var(--color-fail) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-fail) 20%, transparent);
+  color: var(--color-muted);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+}
+
+.competitor-summary {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+.competitor-summary-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+  margin-bottom: 0.75rem;
+}
+.competitor-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.competitor-row {
+  display: grid;
+  grid-template-columns: 1fr 120px 60px;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+.competitor-domain { font-weight: 600; color: var(--color-text); }
+.competitor-bar-wrap {
+  height: 5px;
+  background: var(--color-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.competitor-bar {
+  height: 100%;
+  background: var(--color-fail);
+  border-radius: 3px;
+}
+.competitor-count { font-size: 0.75rem; color: var(--color-muted); text-align: right; }
+
 .btn-pdf {
   background: var(--color-accent);
   border: none;

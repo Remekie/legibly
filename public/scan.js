@@ -376,9 +376,24 @@ function renderFullReport(data) {
                 <div class="citation-verdict ${r.appearing ? 'verdict--win' : 'verdict--miss'}">
                   ${r.appearing ? 'Your site appears in this AI answer' : 'Your site does not appear — competitors are winning this prompt'}
                 </div>
+                ${r.competitors?.length ? `<div class="citation-competitors">Cited instead: ${r.competitors.map(d => `<span class="competitor-tag">${escapeHtml(d)}</span>`).join('')}</div>` : ''}
               </div>
             </div>`).join('')}
         </div>
+        ${c.competitors?.length ? `
+          <div class="competitor-summary">
+            <div class="competitor-summary-title">Top competitors appearing in your prompts</div>
+            <div class="competitor-list">
+              ${c.competitors.map(comp => `
+                <div class="competitor-row">
+                  <span class="competitor-domain">${escapeHtml(comp.domain)}</span>
+                  <span class="competitor-bar-wrap">
+                    <span class="competitor-bar" style="width:${Math.round((comp.appearances/comp.total)*100)}%"></span>
+                  </span>
+                  <span class="competitor-count">${comp.appearances}/${comp.total} prompts</span>
+                </div>`).join('')}
+            </div>
+          </div>` : ''}
       </div>
     `);
   }
