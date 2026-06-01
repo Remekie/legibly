@@ -27,7 +27,10 @@ const scanLimiter = rateLimit({
   message: { error: 'Too many requests. Please wait a minute.' },
 });
 
-app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/health', (_req, res) => res.json({
+  status: 'ok',
+  anthropic: !!process.env.ANTHROPIC_API_KEY,
+}));
 
 app.post('/api/scan', scanLimiter, async (req, res) => {
   const { url } = req.body ?? {};
