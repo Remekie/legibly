@@ -72,10 +72,9 @@ function renderResult({ grade, score, blocker, signals }) {
   resultSection.innerHTML = `
     <div class="result-card ${gradeClass}">
 
-      ${visibilityPct !== null ? renderVisibilityGauge(visibilityPct, missingWordCount) : ''}
-
       <div class="grade-display" aria-label="Grade ${grade}">${grade}</div>
       <div class="score-label">AI Visibility Score: ${score}/100</div>
+      ${visibilityPct !== null ? renderVisibilityGauge(visibilityPct, missingWordCount) : ''}
       ${blocker ? `<p class="blocker" role="alert">⚠️ ${escapeHtml(blocker)}</p>` : ''}
 
       <ul class="signals" aria-label="Signal summary">
@@ -136,7 +135,7 @@ function renderVisibilityGauge(pct, missingWords) {
   const arcFrac = (pct / 100) * 0.75;
   const dashOffset = circ * (1 - arcFrac);
   const color = pct >= 80 ? 'var(--color-pass)' : pct >= 50 ? 'var(--color-partial)' : 'var(--color-fail)';
-  const label = pct >= 80 ? 'Good AI visibility' : pct >= 50 ? 'Partial AI visibility' : 'Poor — most content hidden from AI';
+  const label = pct >= 80 ? 'Page content readable by crawlers' : pct >= 50 ? 'Some content hidden from AI crawlers' : 'Most content hidden from AI crawlers';
 
   return `
     <div class="visibility-gauge" aria-label="Content visibility ${pct}%">
@@ -153,7 +152,7 @@ function renderVisibilityGauge(pct, missingWords) {
         </svg>
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
           <span class="gauge-pct" style="color:${color}">${pct}%</span>
-          <span class="gauge-sub" style="display:block;">visible to AI</span>
+          <span class="gauge-sub" style="display:block;">words crawlable</span>
         </div>
       </div>
       <div class="gauge-meta">
