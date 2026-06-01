@@ -1,5 +1,9 @@
 import { checkPrerender } from './prerender.js';
 import { checkRobots } from './robots.js';
+import { checkLlmstxt } from './llmstxt.js';
+import { checkSchema } from './schema.js';
+import { checkContent } from './content.js';
+import { checkBrandTrust } from './brandtrust.js';
 import { toGrade } from './grade.js';
 
 /**
@@ -8,18 +12,22 @@ import { toGrade } from './grade.js';
  * @returns {Promise<ScanResult>}
  */
 export async function scan(url) {
-  const [prerender, robots] = await Promise.all([
+  const [prerender, robots, llmstxt, schema, content, eeat] = await Promise.all([
     checkPrerender(url),
     checkRobots(url),
+    checkLlmstxt(url),
+    checkSchema(url),
+    checkContent(url),
+    checkBrandTrust(url),
   ]);
 
   const signals = {
-    prerender,                                                          // 25%
-    robots,                                                             // 20%
-    schema:  { score: 0, stub: true, detail: 'Coming in full report' }, // 15%
-    llmstxt: { score: 0, stub: true, detail: 'Coming in full report' }, // 15%
-    content: { score: 0, stub: true, detail: 'Coming in full report' }, // 15%
-    eeat:    { score: 0, stub: true, detail: 'Coming in full report' }, // 10%
+    prerender, // 25%
+    robots,    // 20%
+    schema,    // 15%
+    llmstxt,   // 15%
+    content,   // 15%
+    eeat,      // 10%
   };
 
   const { grade, score, blocker } = toGrade(signals);
