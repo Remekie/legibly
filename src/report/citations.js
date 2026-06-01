@@ -42,7 +42,10 @@ export async function checkCitations(domain, prompts) {
 
 async function queryPerplexity(prompt, domain) {
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12_000);
     const res = await fetch(PERPLEXITY_API, {
+      signal: controller.signal,
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
@@ -55,6 +58,7 @@ async function queryPerplexity(prompt, domain) {
       }),
     });
 
+    clearTimeout(timer);
     if (!res.ok) return { prompt, appearing: false, citedSources: [], error: res.status };
 
     const data = await res.json();

@@ -18,7 +18,9 @@ export async function checkRobots(url) {
     });
     clearTimeout(timer);
 
-    robotsTxt = await res.text();
+    if (res.ok) {
+      robotsTxt = await res.text();
+    }
 
     // Cloudflare "Block AI Scrapers" toggle sets this header or noai tag
     const cfHeader = res.headers.get('cf-aibm');

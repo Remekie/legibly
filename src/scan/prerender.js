@@ -68,19 +68,22 @@ export async function checkPrerender(url) {
 
 async function fetchBotView(browser, url) {
   const page = await browser.newPage();
-  await page.setUserAgent(
-    'Mozilla/5.0 AppleWebKit/537.36 (compatible; GPTBot/1.0; +https://openai.com/gptbot)'
-  );
-  await page.setJavaScriptEnabled(false);
+  try {
+    await page.setUserAgent(
+      'Mozilla/5.0 AppleWebKit/537.36 (compatible; GPTBot/1.0; +https://openai.com/gptbot)'
+    );
+    await page.setJavaScriptEnabled(false);
 
-  const response = await page.goto(url, {
-    waitUntil: 'domcontentloaded',
-    timeout: TIMEOUT_MS,
-  });
+    const response = await page.goto(url, {
+      waitUntil: 'domcontentloaded',
+      timeout: TIMEOUT_MS,
+    });
 
-  const html = await page.content();
-  await page.close();
-  return { html, statusCode: response?.status() ?? null };
+    const html = await page.content();
+    return { html, statusCode: response?.status() ?? null };
+  } finally {
+    await page.close();
+  }
 }
 
 async function fetchHumanView(url) {

@@ -52,8 +52,8 @@ form.addEventListener('submit', async (e) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: raw }),
     });
+    if (!res.ok) { showError((await res.json().catch(() => ({}))).error ?? 'Scan failed. Please try again.'); return; }
     const data = await res.json();
-    if (!res.ok) { showError(data.error ?? 'Scan failed. Please try again.'); return; }
     currentScanData = data;
     renderResult(data);
   } catch {
@@ -127,7 +127,8 @@ function renderResult({ grade, score, blocker, signals, sitePages }) {
       btn.setAttribute('aria-expanded', 'true');
     });
   });
-  document.addEventListener('click', closeAllTooltips, { once: false });
+  document.removeEventListener('click', closeAllTooltips);
+  document.addEventListener('click', closeAllTooltips);
 }
 
 function renderSitePagesSummary({ pagesChecked, aggregate }) {
@@ -205,7 +206,7 @@ async function fetchFullReport() {
   btn.disabled = true;
   btn.textContent = 'Generating report…';
   panel.hidden = false;
-  loading.style.display = 'flex';
+  loading.removeAttribute('hidden');
   content.innerHTML = '';
 
   // Animate dots
@@ -221,9 +222,11 @@ async function fetchFullReport() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: currentUrl }),
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error ?? 'Report failed');
+    }
     const data = await res.json();
-
-    if (!res.ok) throw new Error(data.error ?? 'Report failed');
 
     loading.style.display = 'none';
     btn.textContent = 'Report generated ✓';
@@ -257,9 +260,11 @@ async function fetchFullReport() {
         if (!target) return;
         const blob = new Blob([target.textContent], { type: 'text/plain' });
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
+        const objUrl = URL.createObjectURL(blob);
+        a.href = objUrl;
         a.download = b.dataset.filename ?? 'download.txt';
         a.click();
+        setTimeout(() => URL.revokeObjectURL(objUrl), 60_000);
       });
     });
 
@@ -495,9 +500,11 @@ async function downloadPDF() {
     if (!res.ok) throw new Error('PDF generation failed');
     const blob = await res.blob();
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    const objUrl = URL.createObjectURL(blob);
+    a.href = objUrl;
     a.download = `legibly-report-${safeOrigin(currentUrl).replace('https://','').replace('http://','')}.pdf`;
     a.click();
+    setTimeout(() => URL.revokeObjectURL(objUrl), 60_000);
     btn.textContent = '⬇ Download PDF Report';
   } catch {
     btn.textContent = 'PDF failed — try again';
@@ -527,5 +534,6 @@ function safeOrigin(url) {
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

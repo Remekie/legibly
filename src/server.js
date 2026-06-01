@@ -1,13 +1,11 @@
 import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { Resend } from 'resend';
+import { validatePublicUrl, safeFilename } from './lib/validateUrl.js';
 import { scan } from './scan/index.js';
 import { getCached, setCached, cacheSize } from './scan/cache.js';
 import { generateReport } from './report/index.js';
 import { generatePDF } from './report/pdf.js';
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
@@ -16,20 +14,22 @@ app.use(helmet());
 app.use(express.json({ limit: '10kb' }));
 app.use(express.static('public'));
 
+const scanLimiter = rateLimit({
+  windowMs: 60 * 1000, max: 10,
+  standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Too many requests. Please wait a minute.' },
+});
+
 const reportLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
+  windowMs: 60 * 1000, max: 5,
+  standardHeaders: true, legacyHeaders: false,
   message: { error: 'Too many report requests. Please wait a minute.' },
 });
 
-const scanLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many requests. Please wait a minute.' },
+const pdfLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, max: 3,
+  standardHeaders: true, legacyHeaders: false,
+  message: { error: 'PDF generation limit reached. Please wait 5 minutes.' },
 });
 
 app.get('/health', async (_req, res) => {
@@ -40,46 +40,29 @@ app.get('/health', async (_req, res) => {
     const { existsSync } = await import('fs');
     chromiumExists = chromiumPath !== 'not set' && existsSync(chromiumPath);
     if (!chromiumExists) {
-      // Try to find system chromium
       try { chromiumPath = execSync('which chromium || which chromium-browser || which google-chrome', { encoding: 'utf8' }).trim(); chromiumExists = true; } catch { /* not found */ }
     }
   } catch { /* ignore */ }
-  res.json({
-    status: 'ok',
-    anthropic: !!process.env.ANTHROPIC_API_KEY,
-    perplexity: !!process.env.PERPLEXITY_API_KEY,
-    cache: cacheSize(),
-    chromiumPath,
-    chromiumExists,
-  });
+  // Don't expose API key presence or internal paths publicly
+  res.json({ status: 'ok', cache: cacheSize(), chromiumExists });
 });
 
 app.post('/api/scan', scanLimiter, async (req, res) => {
-  const { url } = req.body ?? {};
-
-  if (!url || typeof url !== 'string') {
-    return res.status(400).json({ error: 'url is required' });
-  }
-
-  let parsed;
+  let url;
   try {
-    parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
-  } catch {
-    return res.status(400).json({ error: 'Invalid URL' });
-  }
-
-  if (!['http:', 'https:'].includes(parsed.protocol)) {
-    return res.status(400).json({ error: 'URL must use http or https' });
+    url = await validatePublicUrl(req.body?.url ?? '');
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
   }
 
   try {
-    const cached = getCached(parsed.href);
+    const cached = getCached(url);
     if (cached) {
       res.set('X-Cache', 'HIT');
       return res.json(cached);
     }
-    const result = await scan(parsed.href);
-    setCached(parsed.href, result);
+    const result = await scan(url);
+    setCached(url, result);
     res.set('X-Cache', 'MISS');
     res.json(result);
   } catch (err) {
@@ -89,25 +72,15 @@ app.post('/api/scan', scanLimiter, async (req, res) => {
 });
 
 app.post('/api/report', reportLimiter, async (req, res) => {
-  const { url } = req.body ?? {};
-
-  if (!url || typeof url !== 'string') {
-    return res.status(400).json({ error: 'url is required' });
-  }
-
-  let parsed;
+  let url;
   try {
-    parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
-  } catch {
-    return res.status(400).json({ error: 'Invalid URL' });
-  }
-
-  if (!['http:', 'https:'].includes(parsed.protocol)) {
-    return res.status(400).json({ error: 'URL must use http or https' });
+    url = await validatePublicUrl(req.body?.url ?? '');
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
   }
 
   try {
-    const result = await generateReport(parsed.href);
+    const result = await generateReport(url);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: 'Report generation failed. Please try again.' });
@@ -115,34 +88,19 @@ app.post('/api/report', reportLimiter, async (req, res) => {
   }
 });
 
-const pdfLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000,
-  max: 3,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'PDF generation limit reached. Please wait 5 minutes.' },
-});
-
 app.post('/api/report/pdf', pdfLimiter, async (req, res) => {
-  const { url } = req.body ?? {};
-
-  if (!url || typeof url !== 'string') return res.status(400).json({ error: 'url is required' });
-
-  let parsed;
+  let url;
   try {
-    parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
-  } catch {
-    return res.status(400).json({ error: 'Invalid URL' });
-  }
-
-  if (!['http:', 'https:'].includes(parsed.protocol)) {
-    return res.status(400).json({ error: 'URL must use http or https' });
+    url = await validatePublicUrl(req.body?.url ?? '');
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
   }
 
   try {
-    const reportData = await generateReport(parsed.href);
+    const reportData = await generateReport(url);
     const pdf = await generatePDF(reportData);
-    const filename = `legibly-report-${parsed.hostname.replace('www.', '')}.pdf`;
+    const hostname = new URL(url).hostname;
+    const filename = `legibly-report-${safeFilename(hostname)}.pdf`;
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${filename}"`,
