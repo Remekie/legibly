@@ -4,7 +4,7 @@ import { checkLlmstxt } from './llmstxt.js';
 import { checkSchema } from './schema.js';
 import { checkContent } from './content.js';
 import { checkBrandTrust } from './brandtrust.js';
-import { checkMetadata } from './metadata.js';
+import { checkMetadata, checkRedirectChain } from './metadata.js';
 import { checkSitePages } from './sitemapper.js';
 import { toGrade } from './grade.js';
 
@@ -28,25 +28,26 @@ async function fetchSharedHtml(url) {
 
 export async function scan(url) {
   // Phase 1: parallel — prerender (Puppeteer), robots, llmstxt, shared HTML fetch, multi-page crawl
-  const [prerender, robots, llmstxt, sharedHtml, sitePagesResult] = await Promise.all([
+  const [prerender, robots, llmstxt, sharedHtml, sitePagesResult, redirectHops] = await Promise.all([
     checkPrerender(url),
     checkRobots(url),
     checkLlmstxt(url),
     fetchSharedHtml(url),
     checkSitePages(url).catch(() => ({ pagesChecked: 0, pageResults: [], aggregate: null })),
+    checkRedirectChain(url), // Phase 1 so it runs alongside Puppeteer, not blocking Phase 2
   ]);
   const sitePages = sitePagesResult;
 
-  // Use shared fetch HTML, or fall back to bot HTML from Puppeteer
-  // (handles Cloudflare-protected sites that block regular browser fetches but allow GPTBot)
-  const htmlForSignals = sharedHtml ?? prerender.botHtml ?? null;
+  // Use shared fetch HTML, or fall back to bot HTML from Puppeteer.
+  // Explicit isBlocked guard: never use botHtml when the site blocked AI crawlers entirely.
+  const htmlForSignals = sharedHtml ?? (prerender.isBlocked ? null : prerender.botHtml) ?? null;
 
   // Phase 2: HTML-dependent signals
   const [schema, content, eeat, metadata] = await Promise.all([
     checkSchema(url, htmlForSignals),
     checkContent(url, htmlForSignals),
     checkBrandTrust(url, htmlForSignals),
-    checkMetadata(url, htmlForSignals),
+    checkMetadata(url, htmlForSignals, redirectHops),
   ]);
 
   // Enrich schema signal with multi-page data

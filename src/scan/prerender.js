@@ -51,12 +51,16 @@ export async function checkPrerender(url) {
       ? calculateVisibility(botHtml, humanHtml)
       : { visibilityPct: isSpaOnly ? 0 : 85, botWordCount: 0, humanWordCount: 0, missingWordCount: 0, missingWords: [] };
 
+    // Detect application-level bot walls (200 status but challenge page)
+    const BOT_WALL = /checking your browser|enable javascript and cookies|cloudflare ray id|access denied|just a moment\.\.\./i;
+    const isBotWall = BOT_WALL.test(botHtml);
+
     return {
       score: isSpaOnly ? 0 : 10,
       isSpaOnly,
       isBlocked: false,
       statusCode,
-      botHtml: isSpaOnly ? null : botHtml, // expose for fallback in other signals
+      botHtml: (isSpaOnly || isBotWall) ? null : botHtml, // expose for fallback in other signals
       ...visibility,
       detail: isSpaOnly
         ? "AI can't read your site. The way it's built makes it invisible to ChatGPT, Claude, and Perplexity."

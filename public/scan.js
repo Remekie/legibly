@@ -64,7 +64,9 @@ form.addEventListener('submit', async (e) => {
 });
 
 function renderResult({ grade, score, blocker, signals, sitePages }) {
-  const gradeClass = `grade-${grade.toLowerCase()}`;
+  const safeGrade = escapeHtml(String(grade ?? '?'));
+  const safeScore = escapeHtml(String(score ?? 0));
+  const gradeClass = `grade-${safeGrade.toLowerCase().replace(/[^a-f]/g, 'f')}`;
   const vis = signals.prerender;
   const visibilityPct = vis?.visibilityPct ?? null;
   const missingWordCount = vis?.missingWordCount ?? 0;
@@ -72,8 +74,8 @@ function renderResult({ grade, score, blocker, signals, sitePages }) {
   resultSection.innerHTML = `
     <div class="result-card ${gradeClass}">
 
-      <div class="grade-display" aria-label="Grade ${grade}">${grade}</div>
-      <div class="score-label">AI Visibility Score: ${score}/100</div>
+      <div class="grade-display" aria-label="Grade ${safeGrade}">${safeGrade}</div>
+      <div class="score-label">AI Visibility Score: ${safeScore}/100</div>
       ${visibilityPct !== null ? renderVisibilityGauge(visibilityPct, missingWordCount) : ''}
       ${blocker ? `<p class="blocker" role="alert">⚠️ ${escapeHtml(blocker)}</p>` : ''}
       ${sitePages?.pagesChecked > 1 ? renderSitePagesSummary(sitePages) : ''}

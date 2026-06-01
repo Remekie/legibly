@@ -6,7 +6,7 @@ const MIN_META_LENGTH = 80;
 
 const FETCH_TIMEOUT_MS = 8_000;
 
-export async function checkMetadata(url, html = null) {
+export async function checkMetadata(url, html = null, redirectHops = null) {
   if (!html) {
     return { score: 0, issues: [], detail: 'Could not reach page to check metadata.' };
   }
@@ -36,8 +36,8 @@ export async function checkMetadata(url, html = null) {
     const altCoverage = images.length === 0 ? 1 : (images.length - imagesWithoutAlt.length) / images.length;
     const altFailing = images.length > 0 && altCoverage < 0.7;
 
-    // Redirect chain check
-    const redirectChain = await checkRedirectChain(url);
+    // Use pre-computed redirect hops from Phase 1 if available
+    const redirectChain = redirectHops ?? 0;
 
     const issues = [];
     if (noindex)                                                    issues.push('noindex');
@@ -86,7 +86,7 @@ function formatIssues(issues) {
   return issues.map(i => labels[i] ?? i).join(', ');
 }
 
-async function checkRedirectChain(url) {
+export async function checkRedirectChain(url) {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -101,10 +101,11 @@ async function checkRedirectChain(url) {
     if (res.status >= 300 && res.status < 400) {
       const location = res.headers.get('location');
       if (!location) return 1;
-      // Follow one more hop to count
+      // Resolve relative Location headers against original URL (RFC 7231)
+      const resolvedLocation = new URL(location, url).href;
       const controller2 = new AbortController();
       const timer2 = setTimeout(() => controller2.abort(), FETCH_TIMEOUT_MS);
-      const res2 = await fetch(location, {
+      const res2 = await fetch(resolvedLocation, {
         method: 'HEAD',
         redirect: 'manual',
         signal: controller2.signal,

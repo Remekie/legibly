@@ -16,9 +16,13 @@ export async function checkSitePages(originUrl) {
     return { pagesChecked: 0, pageResults: [], aggregate: null };
   }
 
-  const pageResults = await Promise.all(
-    urls.map(url => checkPage(url))
-  );
+  // Batch concurrent fetches to 3 to avoid memory spikes on Railway
+  const BATCH = 3;
+  const pageResults = [];
+  for (let i = 0; i < urls.length; i += BATCH) {
+    const batch = urls.slice(i, i + BATCH);
+    pageResults.push(...await Promise.all(batch.map(url => checkPage(url))));
+  }
 
   const checked = pageResults.length;
   const withSchema       = pageResults.filter(p => p.hasSchema).length;
@@ -104,8 +108,10 @@ async function discoverPageUrls(origin, homeUrl) {
       const urls = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)]
         .map(m => m[1].trim().replace(/&amp;/g, '&'))
         .filter(u => {
-          try { return u.startsWith('http') && !!new URL(u) && u !== homeUrl; }
-          catch { return false; }
+          try {
+            const parsed = new URL(u);
+            return parsed.origin === origin && u !== homeUrl;
+          } catch { return false; }
         })
         .slice(0, MAX_PAGES);
 
