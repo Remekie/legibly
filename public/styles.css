@@ -1,5 +1,6 @@
 /* System font stack — no external requests */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
 
 :root {
   --color-bg: #0a0a0a;

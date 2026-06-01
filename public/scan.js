@@ -205,7 +205,7 @@ async function fetchFullReport() {
   btn.disabled = true;
   btn.textContent = 'Generating report…';
   panel.hidden = false;
-  loading.hidden = false;
+  loading.style.display = 'flex';
   content.innerHTML = '';
 
   // Animate dots
@@ -225,7 +225,7 @@ async function fetchFullReport() {
 
     if (!res.ok) throw new Error(data.error ?? 'Report failed');
 
-    loading.hidden = true;
+    loading.style.display = 'none';
     btn.textContent = 'Report generated ✓';
     content.innerHTML = renderFullReport(data);
 
@@ -264,7 +264,7 @@ async function fetchFullReport() {
     });
 
   } catch (err) {
-    loading.hidden = true;
+    loading.style.display = 'none';
     content.innerHTML = `<p class="report-error">Report generation failed: ${escapeHtml(err.message)}</p>`;
     btn.disabled = false;
     btn.textContent = 'Retry full report →';
