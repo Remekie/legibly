@@ -10,7 +10,16 @@ const SIGNAL_LABELS = {
   schema:    'Structured data',
   llmstxt:   'llms.txt file',
   content:   'Answer-first content',
-  eeat:      'E-E-A-T signals',
+  eeat:      'Brand trust signals',
+};
+
+const SIGNAL_TOOLTIPS = {
+  prerender: 'AI crawlers like GPTBot and ClaudeBot cannot run JavaScript. If your site depends on JS to show content, AI sees a blank page.',
+  robots:    'A robots.txt file tells crawlers what they can and can\'t access. AI crawlers obey these rules — if they\'re blocked here, your site doesn\'t exist to them.',
+  schema:    'Structured data is hidden code that tells AI exactly what your business is, what you offer, and where you\'re located — in a format AI can reliably read.',
+  llmstxt:   'A simple text file at yoursite.com/llms.txt that tells AI models a plain-language summary of who you are and what you do.',
+  content:   'AI citation engines favor pages that answer questions directly in the first few sentences — not pages that bury the answer after a long intro.',
+  eeat:      'Experience, Expertise, Authoritativeness, Trustworthiness — the signals AI engines use to decide whether your business is credible enough to recommend.',
 };
 
 form.addEventListener('submit', async (e) => {
@@ -77,6 +86,22 @@ function renderResult({ grade, score, blocker, signals }) {
   resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   document.getElementById('breakdown-btn').addEventListener('click', toggleBreakdown);
+
+  // Info bubble tooltips
+  resultSection.querySelectorAll('.info-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeAllTooltips();
+      const tip = document.createElement('div');
+      tip.className = 'tooltip';
+      tip.setAttribute('role', 'tooltip');
+      tip.textContent = btn.dataset.tip;
+      btn.after(tip);
+      btn.setAttribute('aria-expanded', 'true');
+    });
+  });
+
+  document.addEventListener('click', closeAllTooltips, { once: false });
 }
 
 function toggleBreakdown() {
@@ -93,6 +118,12 @@ function toggleBreakdown() {
   }
 }
 
+function infoBtn(key) {
+  const tip = SIGNAL_TOOLTIPS[key];
+  if (!tip) return '';
+  return `<button class="info-btn" aria-label="What is ${escapeHtml(SIGNAL_LABELS[key] ?? key)}?" data-tip="${escapeHtml(tip)}">?</button>`;
+}
+
 function renderSignalSummary(key, signal) {
   const label = SIGNAL_LABELS[key] ?? key;
 
@@ -100,7 +131,7 @@ function renderSignalSummary(key, signal) {
     return `
       <li class="signal signal--stub">
         <span class="signal-icon" aria-hidden="true">·</span>
-        <span class="signal-label">${escapeHtml(label)}</span>
+        <span class="signal-label">${escapeHtml(label)}${infoBtn(key)}</span>
         <span class="signal-detail">In full report</span>
       </li>
     `;
@@ -112,7 +143,7 @@ function renderSignalSummary(key, signal) {
   return `
     <li class="signal signal--${status}">
       <span class="signal-icon" aria-hidden="true">${icon}</span>
-      <span class="signal-label">${escapeHtml(label)}</span>
+      <span class="signal-label">${escapeHtml(label)}${infoBtn(key)}</span>
     </li>
   `;
 }
@@ -141,12 +172,17 @@ function renderBreakdownRow(key, signal) {
     <div class="breakdown-row breakdown-row--${status}">
       <div class="breakdown-row-header">
         <span class="breakdown-icon" aria-hidden="true">${icon}</span>
-        <span class="breakdown-label">${escapeHtml(label)}</span>
+        <span class="breakdown-label">${escapeHtml(label)}${infoBtn(key)}</span>
         <span class="breakdown-badge badge--${status}">${badgeLabel}</span>
       </div>
       <p class="breakdown-detail">${escapeHtml(signal.detail ?? '')}</p>
     </div>
   `;
+}
+
+function closeAllTooltips() {
+  document.querySelectorAll('.tooltip').forEach(t => t.remove());
+  document.querySelectorAll('.info-btn').forEach(b => b.setAttribute('aria-expanded', 'false'));
 }
 
 function setLoading(loading) {
