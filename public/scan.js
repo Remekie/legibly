@@ -3,6 +3,7 @@ const urlInput = document.getElementById('url-input');
 const urlError = document.getElementById('url-error');
 const scanBtn = document.getElementById('scan-btn');
 const resultSection = document.getElementById('result');
+const scanLayout = document.querySelector('.scan-layout');
 
 function hasGitHub() {
   return !!localStorage.getItem('legibly_github');
@@ -76,6 +77,7 @@ form.addEventListener('submit', async (e) => {
 
   setLoading(true);
   resultSection.hidden = true;
+  scanLayout?.classList.remove('has-results');
   currentUrl = raw.startsWith('http') ? raw : `https://${raw}`;
 
   try {
@@ -158,6 +160,7 @@ function renderResult({ grade, score, blocker, signals, sitePages }) {
   `;
 
   resultSection.hidden = false;
+  scanLayout?.classList.add('has-results');
   resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   document.getElementById('breakdown-btn').addEventListener('click', toggleBreakdown);

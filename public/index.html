@@ -121,9 +121,20 @@
       grid-column: 2;
     }
 
-    /* Result section — full width below two columns */
-    #result-wrap {
-      margin-top: 2.5rem;
+    /* Post-scan: collapse entry to single centered column, hide preview panel */
+    .scan-layout.has-results {
+      grid-template-columns: 1fr;
+      max-width: 680px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .scan-layout.has-results .scan-what-panel { display: none; }
+
+    /* Divider + spacing only when results are live */
+    .scan-layout.has-results + #result-wrap {
+      border-top: 1px solid var(--color-border);
+      padding-top: 2.5rem;
+      margin-top: 2rem;
     }
   </style>
 </head>
