@@ -567,11 +567,7 @@
       <div class="container">
         <span class="hero-label">AI Visibility Diagnostic</span>
         <h1 id="hero-heading">Can AI crawlers actually read your site?</h1>
-        <p class="hero-sub">
-          GPTBot, ClaudeBot, and PerplexityBot never execute JavaScript.
-          If your site is built with React, Lovable, or Vite, AI sees a blank page.
-          Paste your URL and find out.
-        </p>
+        <p class="hero-sub">GPTBot doesn't execute JavaScript — if your site runs on React, Lovable, or Vite, AI sees an empty page.</p>
 
         <form id="scan-form" class="scan-form" novalidate aria-label="Free AI visibility scan">
           <div class="scan-input-wrap">
@@ -591,7 +587,7 @@
             Scan free
           </button>
         </form>
-        <p id="scan-hint" class="scan-note">No account. No credit card. Grade in under 30 seconds.</p>
+        <p id="scan-hint" class="scan-note">Free. No account. Grade in 30 seconds.</p>
         <p id="scan-error" class="scan-error" role="alert" aria-live="polite" hidden></p>
 
         <div id="scan-result" class="scan-result" hidden aria-live="polite" aria-atomic="true"></div>
@@ -601,26 +597,23 @@
     <!-- ── Proof ─────────────────────────────────────────────────────────────── -->
     <section aria-labelledby="proof-heading">
       <div class="container">
-        <span class="hero-label" aria-hidden="true">Real scan · Real findings</span>
-        <h2 id="proof-heading">This is what Legibly found on wingsnob.ca.</h2>
-        <p>Not a demo. Not a mockup. An actual scan result, run this week.</p>
+        <span class="hero-label" aria-hidden="true">Example scan · Lovable-built SaaS</span>
+        <h2 id="proof-heading">This is what Legibly found on a Lovable-built SaaS site.</h2>
+        <p>0% of this site's content is readable by AI. The whole page is a React shell — <code style="font-family:var(--font-mono);font-size:0.875em;background:var(--surface);padding:0.1em 0.3em;border-radius:2px">&lt;div id="root"&gt;&lt;/div&gt;</code> — with nothing inside it. ChatGPT has never read a single word this founder wrote.</p>
 
         <div class="proof-grade-badge">
-          <span class="proof-grade-letter" aria-label="Grade D">D</span>
-          <span class="proof-grade-score">51 / 100 AI Visibility Score</span>
+          <span class="proof-grade-letter" aria-label="Grade F" style="color:var(--fail)">F</span>
+          <span class="proof-grade-score">12 / 100 AI Visibility Score</span>
         </div>
-        <code class="proof-domain">https://wingsnob.ca</code>
-        <p style="font-size:0.875rem;color:var(--muted);margin-top:0.5rem;margin-bottom:1.5rem;">
-          63% of wingsnob.ca content is readable by AI crawlers. 229 words — including every sauce name, meal deal, and catering option — are completely invisible to ChatGPT.
-        </p>
+        <code class="proof-domain">myapp.lovable.app</code>
 
         <div role="table" aria-label="Signal diagnostic results" class="proof-table">
           <div role="rowgroup">
             <div role="row" class="proof-row">
-              <span class="signal-icon signal-icon--pass" aria-hidden="true">✓</span>
+              <span class="signal-icon signal-icon--fail" aria-hidden="true">✗</span>
               <div>
                 <div class="signal-name">AI crawler rendering</div>
-                <div class="signal-detail">AI can read the page content. Not a React SPA shell.</div>
+                <div class="signal-detail">AI can't read this site. It's built with React — GPTBot receives an empty shell. Every word, price, and feature description is invisible to AI.</div>
               </div>
             </div>
             <div role="row" class="proof-row">
@@ -634,35 +627,35 @@
               <span class="signal-icon signal-icon--fail" aria-hidden="true">✗</span>
               <div>
                 <div class="signal-name">Structured data</div>
-                <div class="signal-detail">No schema found across 3 pages checked. AI is guessing what this business is and what it offers.</div>
+                <div class="signal-detail">No schema found. AI is guessing what this product is and what it does.</div>
               </div>
             </div>
             <div role="row" class="proof-row">
-              <span class="signal-icon signal-icon--pass" aria-hidden="true">✓</span>
+              <span class="signal-icon signal-icon--fail" aria-hidden="true">✗</span>
               <div>
                 <div class="signal-name">llms.txt file</div>
-                <div class="signal-detail">llms.txt found. AI engines have a plain-language guide to this site.</div>
+                <div class="signal-detail">No llms.txt. AI engines have no plain-language guide to this site.</div>
               </div>
             </div>
             <div role="row" class="proof-row">
-              <span class="signal-icon signal-icon--partial" aria-hidden="true">~</span>
+              <span class="signal-icon signal-icon--fail" aria-hidden="true">✗</span>
               <div>
                 <div class="signal-name">Answer-first content</div>
-                <div class="signal-detail">The page opens with a tagline, not a description of the business. AI citation engines favor pages that answer questions in the first sentence.</div>
+                <div class="signal-detail">React shell — no readable content at all, let alone an answer-first value statement.</div>
               </div>
             </div>
             <div role="row" class="proof-row">
               <span class="signal-icon signal-icon--fail" aria-hidden="true">✗</span>
               <div>
                 <div class="signal-name">Brand trust signals</div>
-                <div class="signal-detail">AI has no way to verify this business exists beyond this page. No Organization schema. No sameAs links.</div>
+                <div class="signal-detail">No Organization schema, no sameAs social links. AI has no way to verify this product exists.</div>
               </div>
             </div>
             <div role="row" class="proof-row">
               <span class="signal-icon signal-icon--fail" aria-hidden="true">✗</span>
               <div>
                 <div class="signal-name">Page metadata</div>
-                <div class="signal-detail">Title is too generic. Image alt text missing on product photos. No canonical tag. AI engines can't fully understand what this page is about.</div>
+                <div class="signal-detail">Generic title, no meta description, no OG tags. AI engines can't understand what this page is about.</div>
               </div>
             </div>
           </div>
@@ -674,45 +667,28 @@
     <section aria-labelledby="diff-heading">
       <div class="container">
         <span class="hero-label" aria-hidden="true">What makes Legibly different</span>
-        <h2 id="diff-heading">Three things no other tool measures.</h2>
+        <h2 id="diff-heading">Three signals your SEO tool isn't checking.</h2>
 
         <ol class="diff-list" aria-label="Legibly differentiators">
           <li class="diff-item">
             <span class="diff-num" aria-hidden="true">01</span>
             <div>
               <div class="diff-title">Content visibility %</div>
-              <p class="diff-body">
-                We fetch your page the way GPTBot does — no JavaScript, raw HTML only —
-                and compare it to what a human browser sees.
-                The percentage gap is your AI visibility score.
-                Not a confidence rating. An actual measurement.
-                The Adobe LLM Optimizer Chrome extension does this.
-                We do it free, in 30 seconds.
-              </p>
+              <p class="diff-body">We fetch your page the way GPTBot does — no JavaScript, raw HTML only — and measure the gap against what a human sees. This is an actual word count, not a confidence score.</p>
             </div>
           </li>
           <li class="diff-item">
             <span class="diff-num" aria-hidden="true">02</span>
             <div>
               <div class="diff-title">Who's appearing instead of you</div>
-              <p class="diff-body">
-                We run your top prompts through Perplexity and check which domains
-                are cited. If "best wing restaurant in Alberta" surfaces OC Wings
-                and Wild Wing but not you — you see that, with the exact prompts,
-                ranked by how often competitors appear.
-              </p>
+              <p class="diff-body">We run your top customer prompts through Perplexity and identify which competitors are cited instead of you. You see the exact prompts, ranked by how often they're losing you customers.</p>
             </div>
           </li>
           <li class="diff-item">
             <span class="diff-num" aria-hidden="true">03</span>
             <div>
               <div class="diff-title">1-click GitHub fix</div>
-              <p class="diff-body">
-                Connect your repo. We detect your stack — Lovable, Vite, Next.js,
-                or static — and open a PR with every fix applied: pre-rendering,
-                llms.txt, Organization schema, robots.txt. You merge it.
-                No developer needed.
-              </p>
+              <p class="diff-body">We detect your stack — Lovable, Vite, Next.js, or static — and open a PR with every fix applied. You merge it. No developer, no config files, no manual work.</p>
             </div>
           </li>
         </ol>
@@ -723,29 +699,21 @@
     <section aria-labelledby="fix-heading" style="background: var(--surface);">
       <div class="container">
         <span class="hero-label" aria-hidden="true">How the fix works</span>
-        <h2 id="fix-heading">Three steps. One PR. Grade improves.</h2>
+        <h2 id="fix-heading">One PR. Every fix. Grade confirmed.</h2>
 
         <ol class="fix-steps" aria-label="How Legibly fixes your site">
           <li class="fix-step">
             <span class="fix-step-num" aria-hidden="true">1</span>
             <div>
               <div class="fix-step-title">We scan as GPTBot does.</div>
-              <p class="fix-step-body">
-                JavaScript disabled. Raw HTML only. We check what AI crawlers
-                actually receive when they visit your URL — and measure the gap
-                against what a human browser sees.
-              </p>
+              <p class="fix-step-body">JavaScript disabled. Raw HTML only. We measure exactly what AI receives versus what your customers see.</p>
             </div>
           </li>
           <li class="fix-step">
             <span class="fix-step-num" aria-hidden="true">2</span>
             <div>
               <div class="fix-step-title">We write the PR.</div>
-              <p class="fix-step-body">
-                We detect your stack, generate the fixes, and open a pull request
-                on your repo. A Lovable site gets vite-ssg added to the build,
-                llms.txt in /public, Organization schema in index.html.
-              </p>
+              <p class="fix-step-body">vite-ssg pre-renders your React app. llms.txt tells Claude what your site covers. Organization schema tells GPTBot your business name, URL, and what you offer.</p>
               <div class="fix-step-code" aria-label="Example PR title">PR: "Fix AI visibility — grade F → B (Legibly)"</div>
             </div>
           </li>
@@ -753,11 +721,7 @@
             <span class="fix-step-num" aria-hidden="true">3</span>
             <div>
               <div class="fix-step-title">You merge. Grade improves.</div>
-              <p class="fix-step-body">
-                Merge the PR. Your site rebuilds. Scan again and see the before/after.
-                That screenshot of an F turning into a B is what your customers
-                are going to share on Reddit.
-              </p>
+              <p class="fix-step-body">Merge the PR, wait for your build to deploy, then scan again. The before/after grade is the proof.</p>
             </div>
           </li>
         </ol>
@@ -770,11 +734,9 @@
         <span class="hero-label" aria-hidden="true">Pricing</span>
         <h2 id="pricing-heading">The scan is always free.</h2>
         <p class="pricing-line">
-          Full report with prompts, schema snippets, generated llms.txt, citation check, and PDF: <strong>$79.</strong><br>
-          Report plus a ready-to-merge GitHub PR that deploys every fix: <strong>$99.</strong>
-        </p>
-        <p style="color: var(--muted); font-size: 0.9375rem; margin-bottom: 2rem;">
-          No subscription required. No account until you pay. Agencies: white-label dashboard at $149/mo.
+          Full diagnostic report — prompts, schema snippets, generated llms.txt, citation check, PDF: <strong>$79.</strong><br>
+          Report plus a ready-to-merge GitHub PR that deploys every fix: <strong>$99.</strong><br>
+          Monthly monitoring and re-scanning: <strong>$79/mo.</strong> Agencies running client audits: <strong>$149/mo</strong> white-label.
         </p>
         <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center;">
           <a href="https://legibly-production.up.railway.app" class="btn-primary">
@@ -791,9 +753,10 @@
 
   <!-- ── Footer ───────────────────────────────────────────────────────────── -->
   <footer>
-    <span>legibly.dev</span>
+    <span style="color:var(--ink);font-style:italic;">The only scanner that tells you what AI reads on your site — then fixes it.</span>
+    <span style="color:var(--border)">·</span>
     <a href="https://github.com/Remekie/legibly" rel="noopener">github.com/Remekie/legibly</a>
-    <span>A tool by Remekie</span>
+    <span>legibly.dev</span>
     <span>2026</span>
     <a href="/llms.txt">/llms.txt</a>
   </footer>

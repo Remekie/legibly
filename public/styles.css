@@ -1,25 +1,26 @@
-/* System font stack — no external requests */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 [hidden] { display: none !important; }
 
 :root {
-  --color-bg: #0a0a0a;
-  --color-surface: #141414;
-  --color-border: #2a2a2a;
-  --color-text: #f0f0f0;
-  --color-muted: #888;
-  --color-accent: #e8ff47;    /* high-contrast yellow */
-  --color-fail: #ff4d4d;
-  --color-pass: #4dff91;
-  --color-partial: #ffb84d;
+  /* Match landing page diagnostic lab tokens */
+  --color-bg:      #ffffff;
+  --color-surface: #fafaf9;
+  --color-border:  #e5e5e0;
+  --color-text:    #0a0a0a;
+  --color-muted:   #6b7280;
+  --color-accent:  #e8ff47;
+  --color-fail:    #f87171;
+  --color-pass:    #4ade80;
+  --color-partial: #fb923c;
 
-  --grade-A: #4dff91;
-  --grade-B: #a3ff4d;
-  --grade-C: #ffdd4d;
-  --grade-D: #ffb84d;
-  --grade-F: #ff4d4d;
+  --grade-A: #4ade80;
+  --grade-B: #a3e635;
+  --grade-C: #facc15;
+  --grade-D: #fb923c;
+  --grade-F: #f87171;
 
-  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font:      'Public Sans', system-ui, sans-serif;
+  --font-serif:'Libre Baskerville', Georgia, serif;
   --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
 }
 
@@ -27,17 +28,62 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font);
-  font-size: 1rem;
-  line-height: 1.6;
+  font-size: 1.0625rem;
+  line-height: 1.65;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Nav — matches landing page */
+nav {
+  border-bottom: 1px solid var(--color-border);
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.nav-brand {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 1.25rem;
+  text-decoration: none;
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+.nav-label {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* App header */
+.app-header {
+  text-align: left;
+  margin-bottom: 2rem;
+}
+.app-heading {
+  font-family: var(--font-serif);
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+  margin-bottom: 0.625rem;
+}
+.app-sub {
+  font-size: 1rem;
+  color: var(--color-muted);
+  max-width: 55ch;
 }
 
 main {
-  max-width: 640px;
+  max-width: 680px;
   margin: 0 auto;
-  padding: 4rem 1.5rem 6rem;
+  padding: 3rem 1.5rem 5rem;
   width: 100%;
 }
 
@@ -48,28 +94,13 @@ main {
   clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }
 
-/* Header */
-header { text-align: center; margin-bottom: 3rem; }
-
-h1 {
-  font-size: clamp(2rem, 6vw, 3.5rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: var(--color-accent);
-}
-
-.tagline {
-  color: var(--color-muted);
-  margin-top: 0.5rem;
-  font-size: 1.1rem;
-}
-
 /* Scan box */
 .scan-box {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 2rem;
+  border-radius: 6px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .input-row {
@@ -80,36 +111,36 @@ h1 {
 input[type="url"] {
   flex: 1;
   background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border: 1.5px solid var(--color-text);
+  border-radius: 4px;
   color: var(--color-text);
-  font-size: 1rem;
-  padding: 0.75rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  padding: 0.875rem 1rem;
   outline: none;
   transition: border-color 0.15s;
 }
 
 input[type="url"]:focus {
   border-color: var(--color-accent);
-  /* 3px focus ring — WCAG 2.1 AA */
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
 button[type="submit"] {
   background: var(--color-accent);
   border: none;
-  border-radius: 8px;
-  color: #000;
+  border-radius: 4px;
+  color: var(--color-text);
   cursor: pointer;
-  font-size: 0.95rem;
+  font-family: var(--font);
+  font-size: 0.9375rem;
   font-weight: 700;
-  padding: 0.75rem 1.5rem;
-  transition: opacity 0.15s, transform 0.1s;
+  padding: 0.875rem 1.75rem;
+  transition: opacity 0.15s;
   white-space: nowrap;
 }
 
 button[type="submit"]:hover:not(:disabled) { opacity: 0.88; }
-button[type="submit"]:active:not(:disabled) { transform: scale(0.98); }
 button[type="submit"]:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Focus visible — keyboard navigation WCAG */
@@ -124,21 +155,23 @@ button:focus-visible, input:focus-visible {
   margin-top: 0.5rem;
 }
 
-/* Result card */
+/* Result card — diagnostic report aesthetic */
 .result-card {
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border: 1.5px solid var(--color-border);
+  border-top: 2px solid var(--color-text);
+  border-radius: 4px;
   margin-top: 2rem;
-  padding: 2rem;
+  padding: 1.5rem;
   background: var(--color-surface);
 }
 
 .grade-display {
-  font-size: clamp(4rem, 16vw, 7rem);
-  font-weight: 900;
+  font-family: var(--font-serif);
+  font-size: clamp(3.5rem, 14vw, 6rem);
+  font-weight: 700;
   line-height: 1;
-  letter-spacing: -0.04em;
-  text-align: center;
+  letter-spacing: -0.02em;
+  text-align: left;
 }
 
 .grade-a .grade-display { color: var(--grade-A); }
@@ -148,7 +181,7 @@ button:focus-visible, input:focus-visible {
 .grade-f .grade-display { color: var(--grade-F); }
 
 .score-label {
-  text-align: center;
+  text-align: left;
   color: var(--color-muted);
   font-size: 0.9rem;
   margin-top: 0.25rem;
