@@ -168,22 +168,9 @@ function renderResult({ grade, score, blocker, signals, sitePages }) {
       }
 
       <div class="report-cta-row" id="report-cta-row">
-        ${hasEmail() ? `
-          <button class="btn-report" id="get-report-btn">
-            Get full report — prompts, fixes, llms.txt →
-          </button>
-        ` : `
-          <div class="email-gate" id="email-gate">
-            <p class="email-gate-label">Enter your email to see your full report — prompts you're losing, copy-paste fixes, generated llms.txt</p>
-            <div class="email-gate-row">
-              <label for="gate-email" class="sr-only">Your email address</label>
-              <input type="email" id="gate-email" placeholder="you@company.com"
-                autocomplete="email" aria-required="true" />
-              <button class="btn-gate" id="gate-submit">See my report →</button>
-            </div>
-            <p id="gate-error" class="field-error" role="alert" aria-live="polite" hidden></p>
-          </div>
-        `}
+        <button class="btn-report" id="get-report-btn">
+          ${hasPaid() ? 'Get full report — prompts, fixes, llms.txt →' : 'Get full report — $79 →'}
+        </button>
       </div>
 
       <div class="full-report-panel" id="full-report-panel" hidden>
@@ -203,23 +190,15 @@ function renderResult({ grade, score, blocker, signals, sitePages }) {
 
   document.getElementById('breakdown-btn').addEventListener('click', toggleBreakdown);
   document.querySelector('.locked-unlock-btn')?.addEventListener('click', () => {
-    if (hasEmail()) redirectToCheckout();
-    else document.getElementById('gate-email')?.focus();
+    if (hasPaid()) fetchFullReport();
+    else redirectToCheckout();
   });
 
+  // EMAIL GATE BYPASSED FOR TESTING — restore hasEmail() branches when re-enabling gate
   if (hasPaid()) {
     document.getElementById('get-report-btn')?.addEventListener('click', fetchFullReport);
-  } else if (hasEmail()) {
-    const btn = document.getElementById('get-report-btn');
-    if (btn) {
-      btn.textContent = 'Get full report — $79 →';
-      btn.addEventListener('click', redirectToCheckout);
-    }
   } else {
-    document.getElementById('gate-submit')?.addEventListener('click', submitEmailGate);
-    document.getElementById('gate-email')?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') submitEmailGate();
-    });
+    document.getElementById('get-report-btn')?.addEventListener('click', redirectToCheckout);
   }
   resultSection.querySelectorAll('.info-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -612,6 +591,16 @@ function renderSignalSummary(key, signal) {
   </li>`;
 }
 
+const FIX_HINTS = {
+  prerender: 'Add a pre-rendering step so AI crawlers receive real HTML, not a JavaScript shell.',
+  robots:    'Remove the AI crawler block from your robots.txt (User-agent: GPTBot, Disallow: /).',
+  schema:    'Add Organization schema markup to your homepage <head> tag.',
+  llmstxt:   'Create a /llms.txt file at your site root describing what your business does.',
+  content:   'Rewrite your opening paragraphs to answer customer questions in the first sentence.',
+  eeat:      'Add an About page, visible author names, and a contact method.',
+  metadata:  'Write a page title and meta description that name your business and what it does.',
+};
+
 function renderBreakdownRow(key, signal) {
   const label = SIGNAL_LABELS[key] ?? key;
   if (signal.stub) {
@@ -627,6 +616,9 @@ function renderBreakdownRow(key, signal) {
   const status = signal.score === 0 ? 'fail' : signal.score >= 8 ? 'pass' : 'partial';
   const icon = status === 'pass' ? '✓' : status === 'fail' ? '✗' : '!';
   const badgeLabel = status === 'pass' ? 'Passing' : status === 'fail' ? 'Failing' : 'Partial';
+  const hint = (status !== 'pass' && FIX_HINTS[key])
+    ? `<p class="breakdown-hint">Fix: ${escapeHtml(FIX_HINTS[key])}</p>`
+    : '';
   return `<div class="breakdown-row breakdown-row--${status}">
     <div class="breakdown-row-header">
       <span class="breakdown-icon" aria-hidden="true">${icon}</span>
@@ -634,6 +626,7 @@ function renderBreakdownRow(key, signal) {
       <span class="breakdown-badge badge--${status}">${badgeLabel}</span>
     </div>
     <p class="breakdown-detail">${escapeHtml(signal.detail ?? '')}</p>
+    ${hint}
   </div>`;
 }
 
