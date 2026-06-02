@@ -4,6 +4,30 @@ const urlError = document.getElementById('url-error');
 const scanBtn = document.getElementById('scan-btn');
 const resultSection = document.getElementById('result');
 
+// On page load: check if returning from Stripe payment
+(async () => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('payment_success') === '1') {
+    const sessionId = params.get('session_id');
+    const scanUrl   = params.get('scan_url') ?? '';
+    if (sessionId) {
+      try {
+        const res  = await fetch(`/api/verify-payment?session_id=${encodeURIComponent(sessionId)}`);
+        const data = await res.json();
+        if (data.paid) {
+          localStorage.setItem('legibly_paid', sessionId);
+          // Pre-fill URL and auto-scan if we have the original URL
+          if (scanUrl && urlInput) {
+            urlInput.value = decodeURIComponent(scanUrl).replace('https://','').replace('http://','');
+          }
+        }
+      } catch { /* ignore — user can retry */ }
+    }
+    // Clean URL without reloading
+    window.history.replaceState({}, '', '/');
+  }
+})();
+
 const SIGNAL_LABELS = {
   prerender: 'AI crawler rendering',
   robots:    'Crawler access',
@@ -130,8 +154,14 @@ function renderResult({ grade, score, blocker, signals, sitePages }) {
 
   document.getElementById('breakdown-btn').addEventListener('click', toggleBreakdown);
 
-  if (hasEmail()) {
+  if (hasPaid()) {
     document.getElementById('get-report-btn')?.addEventListener('click', fetchFullReport);
+  } else if (hasEmail()) {
+    const btn = document.getElementById('get-report-btn');
+    if (btn) {
+      btn.textContent = 'Get full report — $79 →';
+      btn.addEventListener('click', redirectToCheckout);
+    }
   } else {
     document.getElementById('gate-submit')?.addEventListener('click', submitEmailGate);
     document.getElementById('gate-email')?.addEventListener('keydown', e => {
@@ -572,6 +602,28 @@ function hasEmail() {
   return !!localStorage.getItem('legibly_email');
 }
 
+function hasPaid() {
+  return !!localStorage.getItem('legibly_paid');
+}
+
+async function redirectToCheckout() {
+  const btn = document.getElementById('get-report-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Redirecting to checkout…'; }
+  try {
+    const res  = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: currentUrl }),
+    });
+    if (!res.ok) throw new Error('Checkout unavailable');
+    const { url } = await res.json();
+    window.location.href = url;
+  } catch {
+    if (btn) { btn.disabled = false; btn.textContent = 'Get full report — $79 →'; }
+    showError('Could not start checkout. Please try again.');
+  }
+}
+
 async function submitEmailGate() {
   const input = document.getElementById('gate-email');
   const errEl = document.getElementById('gate-error');
@@ -601,8 +653,8 @@ async function submitEmailGate() {
     // Re-render the CTA row with the report button
     const ctaRow = document.getElementById('report-cta-row');
     if (ctaRow) {
-      ctaRow.innerHTML = `<button class="btn-report" id="get-report-btn">Get full report — prompts, fixes, llms.txt →</button>`;
-      document.getElementById('get-report-btn').addEventListener('click', fetchFullReport);
+      ctaRow.innerHTML = `<button class="btn-report" id="get-report-btn">Get full report — $79 →</button>`;
+      document.getElementById('get-report-btn').addEventListener('click', redirectToCheckout);
     }
   } catch {
     // Even on network error, unlock — email is a signal not a hard gate

@@ -1,11 +1,16 @@
 import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import Stripe from 'stripe';
 import { validatePublicUrl, safeFilename } from './lib/validateUrl.js';
 import { scan } from './scan/index.js';
 import { getCached, setCached, cacheSize } from './scan/cache.js';
 import { generateReport } from './report/index.js';
 import { generatePDF } from './report/pdf.js';
+
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
+  : null;
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
@@ -96,6 +101,68 @@ app.post('/api/email', emailLimiter, (req, res) => {
 
   process.stderr.write(`[lead] ${email} scanned ${url} (${grade})\n`);
   res.json({ ok: true });
+});
+
+const checkoutLimiter = rateLimit({
+  windowMs: 60 * 1000, max: 10,
+  standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Too many requests. Please wait a minute.' },
+});
+
+const REPORT_PRICE_CENTS = 7900; // $79.00
+
+app.post('/api/checkout', checkoutLimiter, async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Payments not configured' });
+
+  const { url } = req.body ?? {};
+  let scanUrl = '';
+  try {
+    scanUrl = url ? await validatePublicUrl(url) : '';
+  } catch { /* non-critical — just metadata */ }
+
+  const appUrl = process.env.APP_URL ?? `https://${req.get('host')}`;
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      line_items: [{
+        price_data: {
+          currency: 'usd',
+          unit_amount: REPORT_PRICE_CENTS,
+          product_data: {
+            name: 'Legibly AI Visibility Report',
+            description: 'Full AI visibility analysis — prompts, schema snippets, generated llms.txt, copy-paste fixes, PDF',
+          },
+        },
+        quantity: 1,
+      }],
+      metadata: { scanUrl },
+      success_url: `${appUrl}/?payment_success=1&session_id={CHECKOUT_SESSION_ID}&scan_url=${encodeURIComponent(scanUrl)}`,
+      cancel_url: `${appUrl}/`,
+    });
+    res.json({ url: session.url });
+  } catch (err) {
+    res.status(500).json({ error: 'Could not create checkout session.' });
+    process.stderr.write(`[stripe error] ${err.message}\n`);
+  }
+});
+
+app.get('/api/verify-payment', async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Payments not configured' });
+
+  const { session_id } = req.query;
+  if (!session_id || typeof session_id !== 'string') {
+    return res.status(400).json({ error: 'session_id required' });
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+    const paid = session.payment_status === 'paid';
+    res.json({ paid, scanUrl: session.metadata?.scanUrl ?? '' });
+  } catch (err) {
+    res.status(400).json({ error: 'Invalid session' });
+    process.stderr.write(`[stripe verify error] ${err.message}\n`);
+  }
 });
 
 app.post('/api/report', reportLimiter, async (req, res) => {
