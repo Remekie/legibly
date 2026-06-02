@@ -153,9 +153,15 @@
     .agency-features li::before{content:"✓  ";color:var(--pass);font-weight:700}
 
     /* ── Pricing ── */
-    .pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-top:2rem}
-    .price-card{border:1.5px solid var(--border);border-radius:4px;padding:1.25rem}
-    .price-card--featured{border-color:var(--ink)}
+    .pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:2rem}
+    @media(max-width:680px){.pricing-grid{grid-template-columns:1fr}}
+    .price-card{border:1.5px solid var(--border);border-radius:4px;padding:1.5rem;display:flex;flex-direction:column}
+    .price-card--featured{border-color:var(--ink);border-width:2px}
+    .price-features{list-style:none;padding:0;margin:1rem 0 1.25rem;flex:1;display:flex;flex-direction:column;gap:.5rem}
+    .price-features li{font-size:.875rem;color:var(--muted);padding-left:1.25rem;position:relative}
+    .price-features li::before{content:"✓";position:absolute;left:0;color:var(--pass);font-weight:700}
+    .price-features li.highlight{color:var(--ink);font-weight:600}
+    .price-features li.highlight::before{color:var(--ink)}
     .price-label{font-size:.6875rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
     .price-amount{font-family:var(--serif);font-size:2.25rem;font-weight:700;line-height:1;margin:.375rem 0}
     .price-period{font-size:.8125rem;color:var(--muted);font-family:var(--sans);font-weight:400}
@@ -209,7 +215,6 @@
       <a href="#how-it-works" class="nav-link" role="listitem">How it works</a>
       <a href="#pricing" class="nav-link" role="listitem">Pricing</a>
       <a href="#faq" class="nav-link" role="listitem">FAQ</a>
-      <a href="https://github.com/Remekie/legibly" class="nav-link" rel="noopener" role="listitem">GitHub</a>
     </div>
     <a href="https://legibly-production.up.railway.app" class="nav-cta">Scan free →</a>
   </nav>
@@ -222,6 +227,14 @@
         <span class="eyebrow">AI Visibility Diagnostic</span>
         <h1 id="hero-h1" style="margin-top:.5rem">Why doesn't your business show up when someone asks ChatGPT?</h1>
         <p class="hero-sub">Your customers are asking AI for recommendations. If your site isn't set up correctly, AI can't read it — and recommends your competitors instead.</p>
+        <div class="platform-list" aria-label="AI platforms Legibly checks">
+          <span class="platform-label">We check</span>
+          <span class="platform-tag">ChatGPT</span>
+          <span class="platform-tag">Claude</span>
+          <span class="platform-tag">Perplexity</span>
+          <span class="platform-tag">Gemini</span>
+          <span class="platform-tag">Google AI Overviews</span>
+        </div>
 
         <form id="scan-form" class="scan-form" novalidate aria-label="Free AI visibility scan">
           <div class="scan-input-wrap">
@@ -403,31 +416,57 @@
         <span class="eyebrow">Pricing</span>
         <h2 id="pricing-heading" style="margin-top:.5rem">The scan is always free.</h2>
         <div class="pricing-grid">
+
+          <!-- Tier 1: Free -->
           <div class="price-card">
             <div class="price-label">Free</div>
             <div class="price-amount">$0</div>
-            <p class="price-desc">Grade + 7 signal pass/fail. No account required.</p>
+            <p class="price-desc">Find out if AI can read your site. No account needed.</p>
+            <ul class="price-features" aria-label="Free tier includes">
+              <li>Overall grade A–F</li>
+              <li>7 signals — pass / fail / partial</li>
+              <li>3 sample prompts you're losing</li>
+              <li>Content visibility percentage</li>
+              <li>No credit card, no signup</li>
+            </ul>
             <a href="https://legibly-production.up.railway.app" class="btn-outline">Scan free</a>
           </div>
+
+          <!-- Tier 2: Report — $79 -->
           <div class="price-card price-card--featured">
             <div class="price-label">Full report</div>
-            <div class="price-amount">$79</div>
-            <p class="price-desc">Prompts, schema snippets, generated llms.txt, citation check, PDF.</p>
-            <a href="https://legibly-production.up.railway.app" class="btn-primary">Get report</a>
+            <div class="price-amount">$79 <span style="font-size:.875rem;font-weight:400;font-family:var(--sans);color:var(--muted)">one-time</span></div>
+            <p class="price-desc">Everything you need to fix your AI visibility — no guessing required.</p>
+            <ul class="price-features" aria-label="Full report includes">
+              <li class="highlight">All 12+ prompts your site should be winning</li>
+              <li class="highlight">Copy-paste schema code, ready to add</li>
+              <li class="highlight">Generated llms.txt — download and deploy</li>
+              <li>Citation check: are you in AI answers today?</li>
+              <li>Competitors ranked by AI appearance frequency</li>
+              <li>How AI describes your business (sentiment)</li>
+              <li>Downloadable PDF — share with your team</li>
+            </ul>
+            <a href="https://legibly-production.up.railway.app" class="btn-primary">Get report — $79</a>
           </div>
+
+          <!-- Tier 3: Fix — $149 -->
           <div class="price-card">
             <div class="price-label">Report + fix</div>
-            <div class="price-amount">$99</div>
-            <p class="price-desc">Full report plus a ready-to-approve fix for your site's code.</p>
-            <a href="https://legibly-production.up.railway.app" class="btn-outline">Get report + fix</a>
+            <div class="price-amount">$149 <span style="font-size:.875rem;font-weight:400;font-family:var(--sans);color:var(--muted)">one-time</span></div>
+            <p class="price-desc">Full report, plus we deploy all the fixes to your site for you.</p>
+            <ul class="price-features" aria-label="Report and fix includes">
+              <li>Everything in Full report</li>
+              <li class="highlight">GitHub PR with all fixes applied</li>
+              <li class="highlight">llms.txt, robots.txt, schema — all committed</li>
+              <li class="highlight">Pre-render fix for Lovable / React sites</li>
+              <li>30-day follow-up scan — we confirm your grade improved</li>
+              <li>Works with Lovable, Next.js, Gatsby, static sites</li>
+            </ul>
+            <a href="https://legibly-production.up.railway.app" class="btn-outline">Get report + fix — $149</a>
           </div>
-          <div class="price-card">
-            <div class="price-label">Monitoring</div>
-            <div class="price-amount">$79<span style="font-size:.875rem;font-weight:400;font-family:var(--sans);color:var(--muted)">/mo</span></div>
-            <p class="price-desc">Monthly rescan, citation tracking, alerts when score drops.</p>
-            <a href="mailto:hello@legibly.dev?subject=Monitoring" class="btn-outline">Get monitoring</a>
-          </div>
+
         </div>
+        <p style="text-align:center;margin-top:1.5rem;font-size:.875rem;color:var(--muted)">Need monthly monitoring and alerts? <a href="mailto:hello@legibly.dev?subject=Monitoring" style="color:var(--ink)">Join the waitlist →</a></p>
       </div>
     </section>
 
@@ -447,19 +486,19 @@
           </details>
           <details>
             <summary>I built my site with Lovable / Bolt / v0. Is that a problem?</summary>
-            <p class="faq-answer">Yes — by default. These tools build React apps that require JavaScript to display content. When an AI crawler visits, it sees an empty page. Legibly's $99 fix automatically resolves this by adding a pre-rendering step that serves real HTML to AI crawlers, without changing how your site looks to human visitors.</p>
+            <p class="faq-answer">Yes — by default. These tools build React apps that require JavaScript to display content. When an AI crawler visits, it sees an empty page. Legibly's $149 fix automatically resolves this by adding a pre-rendering step that serves real HTML to AI crawlers, without changing how your site looks to human visitors.</p>
           </details>
           <details>
             <summary>What does the $79 report include?</summary>
             <p class="faq-answer">A full diagnostic: the prompts your customers are typing where competitors appear instead of you, copy-paste structured data code for your site, a generated AI guide file (llms.txt), a check of whether your business appears in AI answers, and a downloadable PDF of everything.</p>
           </details>
           <details>
-            <summary>How does the $99 fix work?</summary>
-            <p class="faq-answer">You connect your GitHub repository. We detect what your site is built with, generate all the fixes, and open a pull request — a ready-to-approve code change. Your developer (or you, if you built with Lovable) reviews and approves it. Your site rebuilds with everything fixed.</p>
+            <summary>How does the $149 fix work?</summary>
+            <p class="faq-answer">You connect your GitHub repository. We detect what your site is built with, generate all the fixes, and open a pull request — a ready-to-approve code change. Your developer (or you, if you built with Lovable) reviews and approves it. Your site rebuilds with everything fixed. We then re-scan your site 30 days later to confirm your grade improved.</p>
           </details>
           <details>
             <summary>Do I need to be technical to use Legibly?</summary>
-            <p class="faq-answer">No. The free scan requires only your URL. The $79 report requires only your email and a credit card. The $99 fix requires access to your site's code repository — if you don't have that, you can forward the report to your developer and they can implement everything from the instructions.</p>
+            <p class="faq-answer">No. The free scan requires only your URL. The $79 report requires only your email and a credit card. The $149 fix requires access to your site's code repository — if you don't have that, you can forward the report to your developer and they can implement everything from the instructions.</p>
           </details>
         </div>
       </div>
@@ -519,7 +558,6 @@
         <div>
           <div class="footer-col-title">Company</div>
           <ul class="footer-links">
-            <li><a href="https://github.com/Remekie/legibly" rel="noopener">GitHub</a></li>
             <li><a href="mailto:hello@legibly.dev">Contact</a></li>
             <li><a href="/llms.txt">/llms.txt</a></li>
           </ul>
@@ -528,7 +566,7 @@
       <div class="footer-bottom">
         <span>legibly.dev</span>
         <span>2026</span>
-        <a href="https://github.com/Remekie/legibly" rel="noopener">github.com/Remekie/legibly</a>
+        <a href="mailto:hello@legibly.dev">hello@legibly.dev</a>
       </div>
     </div>
   </footer>
