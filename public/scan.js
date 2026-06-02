@@ -12,6 +12,15 @@ function hasGitHub() {
 // On page load: check if returning from Stripe payment
 (async () => {
   const params = new URLSearchParams(window.location.search);
+
+  // TESTING: ?test_paid=1 bypasses Stripe and forces paid state
+  if (params.get('test_paid') === '1') {
+    localStorage.setItem('legibly_paid', 'test-mode');
+    const testUrl = params.get('url') ?? '';
+    if (testUrl && urlInput) urlInput.value = testUrl;
+    window.history.replaceState({}, '', '/');
+  }
+
   if (params.get('payment_success') === '1') {
     const sessionId = params.get('session_id');
     const scanUrl   = params.get('scan_url') ?? '';
