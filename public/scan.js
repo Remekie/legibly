@@ -97,6 +97,37 @@ form.addEventListener('submit', async (e) => {
   }
 });
 
+function renderLockedAnalysis(visibilityPct, hasSitePages) {
+  const items = [];
+  if (visibilityPct !== null) {
+    items.push({ label: 'Content visibility', desc: 'What percentage of your page words AI crawlers can actually read' });
+  }
+  if (hasSitePages) {
+    items.push({ label: 'Site-wide check — 10 pages', desc: 'Structured data, page titles, meta descriptions, headings across all pages' });
+  }
+  items.push({ label: 'Prompts you should be winning', desc: '12+ specific queries where competitors appear instead of you' });
+  items.push({ label: 'Who is appearing instead of you', desc: 'Competitors ranked by AI mention frequency across your keywords' });
+
+  return `
+    <div class="locked-section" aria-label="Full analysis — paid">
+      <div class="locked-section-title">Full analysis</div>
+      <ul class="locked-items">
+        ${items.map(({ label, desc }) => `
+          <li class="locked-item">
+            <span class="locked-badge">Paid</span>
+            <span><strong>${escapeHtml(label)}</strong> — ${escapeHtml(desc)}</span>
+          </li>`).join('')}
+      </ul>
+      <div class="locked-unlock-row">
+        <span>Get the complete diagnostic with copy-paste fixes</span>
+        <button class="btn-primary locked-unlock-btn" style="font-size:.8125rem;padding:.625rem 1.25rem">
+          See full report — $79
+        </button>
+      </div>
+    </div>
+  `;
+}
+
 function renderResult({ grade, score, blocker, signals, sitePages }) {
   const safeGrade = escapeHtml(String(grade ?? '?'));
   const safeScore = escapeHtml(String(score ?? 0));
@@ -105,14 +136,21 @@ function renderResult({ grade, score, blocker, signals, sitePages }) {
   const visibilityPct = vis?.visibilityPct ?? null;
   const missingWordCount = vis?.missingWordCount ?? 0;
 
+  const paid = hasPaid();
+  const hasSitePages = sitePages?.pagesChecked > 1;
+
   resultSection.innerHTML = `
     <div class="result-card ${gradeClass}">
 
       <div class="grade-display" aria-label="Grade ${safeGrade}">${safeGrade}</div>
       <div class="score-label">AI Visibility Score: ${safeScore}/100</div>
-      ${visibilityPct !== null ? renderVisibilityGauge(visibilityPct, missingWordCount) : ''}
       ${blocker ? `<p class="blocker" role="alert">⚠️ ${escapeHtml(blocker)}</p>` : ''}
-      ${sitePages?.pagesChecked > 1 ? renderSitePagesSummary(sitePages) : ''}
+
+      ${paid
+        ? (visibilityPct !== null ? renderVisibilityGauge(visibilityPct, missingWordCount) : '')
+          + (hasSitePages ? renderSitePagesSummary(sitePages) : '')
+        : renderLockedAnalysis(visibilityPct, hasSitePages)
+      }
 
       <ul class="signals" aria-label="Signal summary">
         ${Object.entries(signals).map(([key, s]) => renderSignalSummary(key, s)).join('')}
@@ -164,6 +202,10 @@ function renderResult({ grade, score, blocker, signals, sitePages }) {
   resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   document.getElementById('breakdown-btn').addEventListener('click', toggleBreakdown);
+  document.querySelector('.locked-unlock-btn')?.addEventListener('click', () => {
+    if (hasEmail()) redirectToCheckout();
+    else document.getElementById('gate-email')?.focus();
+  });
 
   if (hasPaid()) {
     document.getElementById('get-report-btn')?.addEventListener('click', fetchFullReport);
