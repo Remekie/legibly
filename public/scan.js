@@ -146,19 +146,13 @@ function renderResult({ grade, score, blocker, signals, sitePages }) {
       <div class="score-label">AI Visibility Score: ${safeScore}/100</div>
       ${blocker ? `<p class="blocker" role="alert">⚠️ ${escapeHtml(blocker)}</p>` : ''}
 
-      ${paid
-        ? (visibilityPct !== null ? renderVisibilityGauge(visibilityPct, missingWordCount) : '')
-          + (hasSitePages ? renderSitePagesSummary(sitePages) : '')
-        : renderLockedAnalysis(visibilityPct, hasSitePages)
-      }
-
       <ul class="signals" aria-label="Signal summary">
         ${Object.entries(signals).map(([key, s]) => renderSignalSummary(key, s)).join('')}
       </ul>
 
       <div class="cta-row">
         <button class="btn-primary" id="breakdown-btn" aria-expanded="false">
-          See full breakdown →
+          See what's failing →
         </button>
       </div>
 
@@ -166,6 +160,12 @@ function renderResult({ grade, score, blocker, signals, sitePages }) {
         <h2 class="breakdown-title">What's blocking your AI visibility</h2>
         ${Object.entries(signals).map(([key, s]) => renderBreakdownRow(key, s)).join('')}
       </div>
+
+      ${paid
+        ? (visibilityPct !== null ? renderVisibilityGauge(visibilityPct, missingWordCount) : '')
+          + (hasSitePages ? renderSitePagesSummary(sitePages) : '')
+        : renderLockedAnalysis(visibilityPct, hasSitePages)
+      }
 
       <div class="report-cta-row" id="report-cta-row">
         ${hasEmail() ? `
@@ -605,7 +605,7 @@ function renderSignalSummary(key, signal) {
     </li>`;
   }
   const status = signal.score === 0 ? 'fail' : signal.score >= 8 ? 'pass' : 'partial';
-  const icon = status === 'pass' ? '✓' : status === 'fail' ? '✗' : '~';
+  const icon = status === 'pass' ? '✓' : status === 'fail' ? '✗' : '!';
   return `<li class="signal signal--${status}">
     <span class="signal-icon" aria-hidden="true">${icon}</span>
     <span class="signal-label">${escapeHtml(label)}${infoBtn(key)}</span>
@@ -625,7 +625,7 @@ function renderBreakdownRow(key, signal) {
     </div>`;
   }
   const status = signal.score === 0 ? 'fail' : signal.score >= 8 ? 'pass' : 'partial';
-  const icon = status === 'pass' ? '✓' : status === 'fail' ? '✗' : '~';
+  const icon = status === 'pass' ? '✓' : status === 'fail' ? '✗' : '!';
   const badgeLabel = status === 'pass' ? 'Passing' : status === 'fail' ? 'Failing' : 'Partial';
   return `<div class="breakdown-row breakdown-row--${status}">
     <div class="breakdown-row-header">

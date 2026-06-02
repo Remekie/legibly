@@ -280,7 +280,8 @@ button:focus-visible, input:focus-visible {
 
 .signal--pass .signal-icon  { color: var(--color-pass); }
 .signal--fail .signal-icon  { color: var(--color-fail); }
-.signal--partial .signal-icon { color: var(--color-partial); }
+.signal--partial .signal-icon { color: var(--color-partial); font-size: .7rem; font-weight: 900; }
+.signal--partial .signal-label { color: var(--color-partial); }
 
 .signal-label { font-weight: 600; }
 .signal-detail { color: var(--color-muted); font-size: 0.8rem; grid-column: 2; }
