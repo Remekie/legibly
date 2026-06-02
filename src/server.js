@@ -2,6 +2,9 @@ import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import Stripe from 'stripe';
+import session from 'express-session';
+import { getOAuthUrl, exchangeCode, detectStack, createFixPR, parseRepo } from './fix/github.js';
+import { buildFixes } from './fix/patches.js';
 import { validatePublicUrl, safeFilename } from './lib/validateUrl.js';
 import { scan } from './scan/index.js';
 import { getCached, setCached, cacheSize } from './scan/cache.js';
@@ -17,6 +20,12 @@ const PORT = process.env.PORT ?? 3000;
 
 app.use(helmet());
 app.use(express.json({ limit: '10kb' }));
+app.use(session({
+  secret: process.env.SESSION_SECRET ?? 'legibly-dev-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: process.env.NODE_ENV === 'production', httpOnly: true, maxAge: 60 * 60 * 1000 },
+}));
 app.use(express.static('public'));
 
 const scanLimiter = rateLimit({
@@ -204,6 +213,85 @@ app.post('/api/report/pdf', pdfLimiter, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'PDF generation failed. Please try again.' });
     process.stderr.write(`[pdf error] ${err.message}\n`);
+  }
+});
+
+// ── GitHub OAuth + Fix Deploy ─────────────────────────────────────────────────
+
+app.get('/api/github/auth', (req, res) => {
+  if (!process.env.GITHUB_CLIENT_ID) return res.status(503).json({ error: 'GitHub not configured' });
+  const state = Math.random().toString(36).slice(2);
+  req.session.oauthState = state;
+  res.redirect(getOAuthUrl(state));
+});
+
+app.get('/api/github/callback', async (req, res) => {
+  const { code, state } = req.query;
+  const appUrl = process.env.APP_URL ?? `https://${req.get('host')}`;
+
+  if (!code || state !== req.session.oauthState) {
+    return res.redirect(`${appUrl}/?github_error=1`);
+  }
+
+  try {
+    const token = await exchangeCode(String(code));
+    req.session.githubToken = token;
+    req.session.oauthState  = null;
+    res.redirect(`${appUrl}/?github_connected=1`);
+  } catch {
+    res.redirect(`${appUrl}/?github_error=1`);
+  }
+});
+
+const fixLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, max: 5,
+  standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Too many fix requests. Please wait 5 minutes.' },
+});
+
+app.post('/api/fix', fixLimiter, async (req, res) => {
+  if (!req.session.githubToken) {
+    return res.status(401).json({ error: 'GitHub not connected. Visit /api/github/auth first.' });
+  }
+
+  const { repoUrl, scanUrl } = req.body ?? {};
+  if (!repoUrl || typeof repoUrl !== 'string') {
+    return res.status(400).json({ error: 'repoUrl is required (e.g. github.com/owner/repo)' });
+  }
+
+  let owner, repo;
+  try {
+    ({ owner, repo } = parseRepo(repoUrl));
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  try {
+    const token = req.session.githubToken;
+    const stackInfo = await detectStack(token, owner, repo);
+
+    // Generate the report for the scanned URL (for llms.txt + schema)
+    let reportData = null;
+    if (scanUrl) {
+      try {
+        const validUrl = await validatePublicUrl(scanUrl);
+        reportData = await generateReport(validUrl);
+      } catch { /* non-critical */ }
+    }
+
+    const fixes = buildFixes({
+      stack:     stackInfo.stack,
+      hasViteSsg: stackInfo.hasViteSsg,
+      llmstxt:   reportData?.report?.llmstxt,
+      schemaRecs: reportData?.report?.schemaRecs,
+      domain:    new URL(scanUrl ?? 'https://example.com').hostname,
+    });
+
+    const { prUrl } = await createFixPR(token, owner, repo, fixes);
+    res.json({ prUrl, fixCount: fixes.length, stack: stackInfo.stack });
+  } catch (err) {
+    res.status(500).json({ error: 'Could not create fix PR. Check repo permissions.' });
+    process.stderr.write(`[fix error] ${err.message}\n`);
   }
 });
 

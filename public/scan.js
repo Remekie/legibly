@@ -4,6 +4,10 @@ const urlError = document.getElementById('url-error');
 const scanBtn = document.getElementById('scan-btn');
 const resultSection = document.getElementById('result');
 
+function hasGitHub() {
+  return !!localStorage.getItem('legibly_github');
+}
+
 // On page load: check if returning from Stripe payment
 (async () => {
   const params = new URLSearchParams(window.location.search);
@@ -23,8 +27,12 @@ const resultSection = document.getElementById('result');
         }
       } catch { /* ignore — user can retry */ }
     }
-    // Clean URL without reloading
-    window.history.replaceState({}, '', '/');
+    // Check GitHub connect return
+  if (params.get('github_connected') === '1') {
+    localStorage.setItem('legibly_github', '1');
+  }
+  // Clean URL without reloading
+  window.history.replaceState({}, '', '/');
   }
 })();
 
@@ -294,6 +302,8 @@ async function fetchFullReport() {
 
     content.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
+    document.getElementById('deploy-btn')?.addEventListener('click', deployFixes);
+
     // Wire copy buttons
     content.querySelectorAll('.copy-btn').forEach(b => {
       b.addEventListener('click', () => {
@@ -464,9 +474,35 @@ function renderFullReport(data) {
     `);
   }
 
-  if (sections.length === 0) return '<p class="report-error">No report sections to display.</p>';
+  // Deploy fix section — always last
+  sections.push(renderDeploySection());
 
   return sections.join('');
+}
+
+function renderDeploySection() {
+  if (hasGitHub()) {
+    return `
+      <div class="report-section deploy-section">
+        <h3 class="report-section-title">Deploy All Fixes to Your Site</h3>
+        <p class="report-section-sub">GitHub connected. Enter your repo URL and Legibly will open a PR with all fixes applied — llms.txt, schema, robots.txt, and pre-rendering for React/Vite sites.</p>
+        <div class="deploy-row">
+          <label for="repo-input" class="sr-only">GitHub repo URL</label>
+          <input type="url" id="repo-input" placeholder="github.com/yourname/yoursite"
+            class="deploy-input" aria-describedby="deploy-error" />
+          <button class="btn-deploy" id="deploy-btn">Deploy fixes →</button>
+        </div>
+        <p id="deploy-error" class="field-error" role="alert" aria-live="polite" hidden></p>
+        <div id="deploy-result" hidden></div>
+      </div>`;
+  }
+
+  return `
+    <div class="report-section deploy-section">
+      <h3 class="report-section-title">Deploy All Fixes Automatically — $99</h3>
+      <p class="report-section-sub">Connect your GitHub repo and Legibly opens a PR with every fix applied. Merge it and your AI visibility score improves immediately. Works with Lovable, Vite, Next.js, and static sites.</p>
+      <a href="/api/github/auth" class="btn-deploy-cta">Connect GitHub and deploy →</a>
+    </div>`;
 }
 
 function renderFixSection(fix) {
@@ -604,6 +640,54 @@ function hasEmail() {
 
 function hasPaid() {
   return !!localStorage.getItem('legibly_paid');
+}
+
+async function deployFixes() {
+  const btn     = document.getElementById('deploy-btn');
+  const input   = document.getElementById('repo-input');
+  const errEl   = document.getElementById('deploy-error');
+  const result  = document.getElementById('deploy-result');
+  const repoUrl = input?.value?.trim() ?? '';
+
+  errEl.hidden = true;
+  if (!repoUrl) {
+    errEl.textContent = 'Please enter your GitHub repo URL.';
+    errEl.hidden = false;
+    input?.focus();
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Creating PR…';
+
+  try {
+    const res  = await fetch('/api/fix', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repoUrl, scanUrl: currentUrl }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error ?? 'Fix failed');
+    }
+    const { prUrl, fixCount, stack } = await res.json();
+    result.hidden = false;
+    result.innerHTML = `
+      <div class="deploy-success">
+        <strong>PR created — ${fixCount} fix${fixCount !== 1 ? 'es' : ''} applied</strong>
+        <span class="deploy-stack">${escapeHtml(stack)} site detected</span>
+        <a href="${escapeHtml(prUrl)}" target="_blank" rel="noopener" class="btn-pr-link">
+          Review and merge on GitHub →
+        </a>
+        <p class="deploy-note">After merging, click "Scan free" again to see your improved grade.</p>
+      </div>`;
+    btn.textContent = 'PR created ✓';
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.hidden = false;
+    btn.disabled = false;
+    btn.textContent = 'Deploy fixes →';
+  }
 }
 
 async function redirectToCheckout() {
