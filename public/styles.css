@@ -81,7 +81,7 @@ nav {
 }
 
 main {
-  max-width: 680px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 3rem 1.5rem 5rem;
   width: 100%;
@@ -160,9 +160,10 @@ button:focus-visible, input:focus-visible {
   border: 1.5px solid var(--color-border);
   border-top: 2px solid var(--color-text);
   border-radius: 4px;
-  margin-top: 2rem;
+  margin-top: 0;
   padding: 1.5rem;
   background: var(--color-surface);
+  max-width: 680px;
 }
 
 .grade-display {
