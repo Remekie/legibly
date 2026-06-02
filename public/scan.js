@@ -21,6 +21,12 @@ function hasGitHub() {
     window.history.replaceState({}, '', '/');
   }
 
+  // Show test banner if paid state is active
+  if (localStorage.getItem('legibly_paid')) {
+    const banner = document.getElementById('test-banner');
+    if (banner) banner.hidden = false;
+  }
+
   if (params.get('payment_success') === '1') {
     const sessionId = params.get('session_id');
     const scanUrl   = params.get('scan_url') ?? '';
@@ -379,6 +385,32 @@ function renderFullReport(data) {
   if (!report) return '<p class="report-error">No report data returned.</p>';
 
   const sections = [];
+
+  // Agent view — what AI actually reads on the page
+  if (report.agentView) {
+    const av = report.agentView;
+    const missingTags = av.missingWords?.length
+      ? av.missingWords.slice(0, 20).map(w => `<span class="missing-word">${escapeHtml(w)}</span>`).join('')
+      : '';
+    sections.push(`
+      <div class="report-section">
+        <h3 class="report-section-title">What AI Actually Reads on Your Site</h3>
+        <p class="report-section-sub">This is the exact content AI crawlers ingest when they visit your page — not what visitors see, but what AI reads. Every word AI can't see is a missed citation opportunity.</p>
+        <div class="agent-view-stats">
+          <span class="agent-stat"><strong>${escapeHtml(String(av.agentWordCount))}</strong> words AI can read</span>
+        </div>
+        ${missingTags ? `
+          <div class="missing-words-block">
+            <div class="missing-words-label">Words visible to humans but invisible to AI crawlers:</div>
+            <div class="missing-words-tags">${missingTags}</div>
+          </div>` : ''}
+        <div class="agent-text-wrap">
+          <div class="agent-text-label">Full text AI ingests from your page</div>
+          <pre class="agent-text">${escapeHtml(av.full)}</pre>
+        </div>
+      </div>
+    `);
+  }
 
   // Prompts section
   if (report.prompts) {
