@@ -107,7 +107,7 @@
     .stats-inner{max-width:700px;margin:0 auto;display:flex;gap:2.5rem;flex-wrap:wrap;align-items:center}
     .stat-item{display:flex;flex-direction:column;gap:.125rem}
     .stat-num{font-family:var(--serif);font-size:1.75rem;font-weight:700;line-height:1}
-    .stat-label{font-size:.75rem;color:var(--muted);font-weight:500}
+    .stat-label{font-size:.75rem;color:var(--muted);font-weight:500;max-width:16ch;line-height:1.4}
     .stat-divider{width:1px;height:2.5rem;background:var(--border);flex-shrink:0}
     @media(max-width:600px){.stat-divider{display:none}}
 
@@ -252,26 +252,26 @@
     </section>
 
     <!-- ── Stats bar ── -->
-    <div class="stats-bar" role="region" aria-label="Platform statistics">
+    <div class="stats-bar" role="region" aria-label="Why scan with Legibly">
       <div class="stats-inner">
         <div class="stat-item">
-          <span class="stat-num">7</span>
-          <span class="stat-label">signals checked per scan</span>
-        </div>
-        <div class="stat-divider" aria-hidden="true"></div>
-        <div class="stat-item">
           <span class="stat-num">30s</span>
-          <span class="stat-label">to your grade</span>
+          <span class="stat-label">From your URL to your grade — no account, no credit card</span>
         </div>
         <div class="stat-divider" aria-hidden="true"></div>
         <div class="stat-item">
           <span class="stat-num">$0</span>
-          <span class="stat-label">to scan and grade</span>
+          <span class="stat-label">To find out why ChatGPT doesn't recommend your business</span>
         </div>
         <div class="stat-divider" aria-hidden="true"></div>
         <div class="stat-item">
-          <span class="stat-num">67%</span>
-          <span class="stat-label">of sites fail structured data</span>
+          <span class="stat-num">7</span>
+          <span class="stat-label">Reasons AI might ignore your site — we check all of them</span>
+        </div>
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="stat-item">
+          <span class="stat-num">1 PR</span>
+          <span class="stat-label">All fixes applied to your codebase. You click merge.</span>
         </div>
       </div>
     </div>
