@@ -1,4 +1,4 @@
-import FirecrawlApp from '@mendable/firecrawl-js';
+import FirecrawlApp from 'firecrawl';
 import * as cheerio from 'cheerio';
 
 const FETCH_TIMEOUT_MS = 10_000;
