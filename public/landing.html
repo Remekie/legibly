@@ -7,690 +7,353 @@
   <meta name="description" content="Paste your URL. Legibly scans 7 signals, grades your AI visibility A–F, and hands you copy-paste fixes. See exactly why ChatGPT and Perplexity ignore your site.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://legibly.dev/">
-
-  <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://legibly.dev/">
   <meta property="og:title" content="Legibly — Find out if AI can see your site. Free scan.">
-  <meta property="og:description" content="Paste your URL. Legibly scans 7 signals, grades your AI visibility A–F, and hands you copy-paste fixes. See exactly why ChatGPT and Perplexity ignore your site.">
+  <meta property="og:description" content="Paste your URL. Legibly grades your AI visibility A–F and hands you copy-paste fixes.">
   <meta property="og:image" content="https://legibly.dev/og-image.png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Legibly — Find out if AI can see your site. Free scan.">
-  <meta name="twitter:description" content="GPTBot never executes JavaScript. Paste your URL and see what AI actually reads.">
-
-  <!-- Fonts: preconnect first, then stylesheet -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-  <!-- JSON-LD: Organization + WebApplication -->
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Organization",
-        "name": "Legibly",
-        "url": "https://legibly.dev",
-        "description": "AI visibility scanner. Grades your site A-F for AI search visibility and deploys fixes.",
-        "sameAs": ["https://github.com/Remekie/legibly"]
-      },
-      {
-        "@type": "WebApplication",
-        "name": "Legibly AI Visibility Scanner",
-        "url": "https://legibly-production.up.railway.app",
-        "description": "Scans 7 AI visibility signals, returns a grade (A-F), and generates copy-paste fixes for ChatGPT, Claude, and Perplexity visibility.",
-        "applicationCategory": "SEO Tool",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "USD",
-          "description": "Free scan"
-        }
-      }
-    ]
-  }
+  {"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"Legibly","url":"https://legibly.dev","description":"AI visibility scanner. Grades your site A-F and deploys fixes.","sameAs":["https://github.com/Remekie/legibly"]},{"@type":"WebApplication","name":"Legibly AI Visibility Scanner","url":"https://legibly-production.up.railway.app","applicationCategory":"SEO Tool","offers":{"@type":"Offer","price":"0","priceCurrency":"USD","description":"Free scan"}}]}
   </script>
-
   <style>
-    /* ── Reset ─────────────────────────────────────────────────────────────── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    [hidden] { display: none !important; }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    [hidden]{display:none!important}
+    :root{
+      --ink:       #0a0a0a;
+      --paper:     #ffffff;
+      --highlight: #e8ff47;
+      --pass:      #4ade80;
+      --fail:      #f87171;
+      --muted:     #6b7280;
+      --border:    #e5e5e0;
+      --surface:   #fafaf9;
+      --serif:     'Libre Baskerville',Georgia,serif;
+      --sans:      'Public Sans',system-ui,sans-serif;
+      --mono:      'SF Mono','Fira Code',monospace;
+    }
+    html{scroll-behavior:smooth}
+    body{font-family:var(--sans);font-size:1.0625rem;line-height:1.65;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased}
+    a{color:inherit;text-decoration:underline;text-underline-offset:3px}
+    a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--highlight);outline-offset:3px}
+    p{max-width:65ch}
 
-    /* ── Tokens ────────────────────────────────────────────────────────────── */
-    :root {
-      --ink:       oklch(8% 0.005 240);
-      --paper:     oklch(99% 0.003 90);
-      --highlight: oklch(93% 0.22 108);
-      --pass:      oklch(72% 0.18 145);
-      --fail:      oklch(68% 0.18 25);
-      --muted:     oklch(52% 0.01 240);
-      --border:    oklch(90% 0.005 90);
-      --surface:   oklch(97% 0.004 90);
+    /* ── Skip nav ── */
+    .skip{position:absolute;top:-100%;left:1rem;background:var(--highlight);color:var(--ink);padding:.5rem 1rem;font-weight:700;font-size:.875rem;border-radius:0 0 4px 4px;z-index:1000}
+    .skip:focus{top:0}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
-      --font-serif: 'Libre Baskerville', Georgia, serif;
-      --font-sans:  'Public Sans', system-ui, sans-serif;
-      --font-mono:  'SF Mono', 'Fira Code', monospace;
+    /* ── Nav ── */
+    nav{position:sticky;top:0;z-index:100;background:var(--paper);border-bottom:1px solid var(--border);padding:.875rem 1.5rem;display:flex;align-items:center;gap:1.5rem}
+    .nav-brand{font-family:var(--serif);font-weight:700;font-size:1.25rem;text-decoration:none;color:var(--ink);letter-spacing:-.01em;margin-right:auto}
+    .nav-link{font-size:.9rem;font-weight:500;color:var(--muted);text-decoration:none;white-space:nowrap;transition:color .15s}
+    .nav-link:hover{color:var(--ink)}
+    .nav-cta{background:var(--highlight);color:var(--ink);font-weight:700;font-size:.875rem;padding:.5rem 1.25rem;border-radius:4px;text-decoration:none;white-space:nowrap;transition:opacity .1s}
+    .nav-cta:hover{opacity:.85}
+    .nav-links{display:flex;align-items:center;gap:1.25rem}
+    @media(max-width:640px){.nav-links{display:none}.nav-mobile-cta{display:block!important}}
+    .nav-mobile-cta{display:none}
 
-      --max-w: 680px;
-      --max-w-wide: 960px;
-    }
+    /* ── Layout ── */
+    .container{max-width:700px;margin:0 auto;padding:0 1.5rem}
+    .container--wide{max-width:1000px;margin:0 auto;padding:0 1.5rem}
+    section{padding:4.5rem 0}
+    section+section{border-top:1px solid var(--border)}
 
-    /* ── Base ──────────────────────────────────────────────────────────────── */
-    html { scroll-behavior: smooth; }
+    /* ── Typography ── */
+    h1,h2,h3{font-family:var(--serif)}
+    h1{font-size:clamp(1.875rem,5vw,3.5rem);font-weight:700;line-height:1.1;letter-spacing:-.015em}
+    h2{font-size:clamp(1.375rem,3.5vw,2.25rem);font-weight:700;line-height:1.15}
+    h3{font-size:1.0625rem;font-weight:700;font-family:var(--sans)}
+    .eyebrow{font-size:.6875rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 
-    body {
-      font-family: var(--font-sans);
-      font-size: 1.0625rem;
-      line-height: 1.65;
-      color: var(--ink);
-      background: var(--paper);
-      -webkit-font-smoothing: antialiased;
-    }
+    /* ── Hero ── */
+    .hero{padding:4.5rem 0 3.5rem;border-bottom:1px solid var(--border)}
+    .hero-sub{font-size:1.125rem;color:var(--muted);margin:.75rem 0 2rem;max-width:52ch}
+    .scan-form{display:flex;gap:.625rem;flex-wrap:wrap}
+    .scan-input-wrap{flex:1;min-width:200px}
+    .scan-input{width:100%;border:1.5px solid var(--ink);border-radius:4px;padding:.875rem 1rem;font-family:var(--mono);font-size:.9375rem;color:var(--ink);background:var(--paper);appearance:none}
+    .scan-input::placeholder{color:var(--muted)}
+    .scan-input:focus{outline:none;border-color:var(--highlight);box-shadow:0 0 0 3px rgb(232 255 71 / .25)}
+    .scan-btn{background:var(--highlight);color:var(--ink);border:none;border-radius:4px;padding:.875rem 1.75rem;font-family:var(--sans);font-weight:700;font-size:.9375rem;cursor:pointer;white-space:nowrap;transition:opacity .1s}
+    .scan-btn:hover:not(:disabled){opacity:.85}
+    .scan-btn:disabled{opacity:.5;cursor:not-allowed}
+    .scan-note{font-size:.8125rem;color:var(--muted);margin-top:.625rem}
+    .scan-error{color:var(--fail);font-size:.875rem;padding:.375rem 0}
+    .scan-result{opacity:0;transition:opacity .2s ease-out;border:1.5px solid var(--border);border-top:2px solid var(--ink);border-radius:4px;margin-top:1.5rem;overflow:hidden}
+    .scan-result.visible{opacity:1}
+    .result-header{display:flex;align-items:center;gap:1.25rem;padding:1rem 1.25rem;border-bottom:1px solid var(--border);background:var(--surface)}
+    .result-grade{font-family:var(--serif);font-size:3.25rem;font-weight:700;line-height:1}
+    .result-meta{display:flex;flex-direction:column;gap:.25rem}
+    .result-score{font-size:1.25rem;font-weight:700}
+    .result-domain{font-size:.8125rem;color:var(--muted);font-family:var(--mono)}
+    .result-blocker{padding:.75rem 1.25rem;font-size:.875rem;background:rgb(248 113 113 / .08);color:#b91c1c;border-bottom:1px solid rgb(248 113 113 / .2)}
+    .signal-row{display:grid;grid-template-columns:1.25rem 1fr auto;gap:.75rem;align-items:start;padding:.75rem 1.25rem;border-bottom:1px solid var(--border);font-size:.9rem}
+    .signal-row:last-child{border-bottom:none}
+    .sig-icon{font-weight:700}
+    .sig-pass{color:var(--pass)} .sig-fail{color:var(--fail)} .sig-partial{color:#fb923c}
+    .sig-name{font-weight:600}
+    .sig-detail{grid-column:2;font-size:.8125rem;color:var(--muted);margin-top:.125rem}
+    .sig-badge{font-size:.6875rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.2rem .5rem;border-radius:3px;white-space:nowrap}
+    .badge-pass{background:rgb(74 222 128/.12);color:#15803d}
+    .badge-fail{background:rgb(248 113 113/.12);color:#b91c1c}
+    .badge-partial{background:rgb(251 146 60/.12);color:#c2410c}
 
-    /* ── Skip nav ──────────────────────────────────────────────────────────── */
-    .skip-nav {
-      position: absolute;
-      top: -100%;
-      left: 1rem;
-      background: var(--highlight);
-      color: var(--ink);
-      padding: 0.5rem 1rem;
-      font-weight: 700;
-      font-size: 0.875rem;
-      border-radius: 0 0 4px 4px;
-      z-index: 1000;
-      transition: top 0.1s;
-    }
-    .skip-nav:focus { top: 0; }
+    /* ── Stats bar ── */
+    .stats-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:1.25rem 1.5rem}
+    .stats-inner{max-width:700px;margin:0 auto;display:flex;gap:2.5rem;flex-wrap:wrap;align-items:center}
+    .stat-item{display:flex;flex-direction:column;gap:.125rem}
+    .stat-num{font-family:var(--serif);font-size:1.75rem;font-weight:700;line-height:1}
+    .stat-label{font-size:.75rem;color:var(--muted);font-weight:500}
+    .stat-divider{width:1px;height:2.5rem;background:var(--border);flex-shrink:0}
+    @media(max-width:600px){.stat-divider{display:none}}
 
-    /* ── Typography ────────────────────────────────────────────────────────── */
-    h1, h2, h3 { font-family: var(--font-serif); }
+    /* ── How it works ── */
+    .steps{list-style:none;margin-top:2rem}
+    .step{display:grid;grid-template-columns:3rem 1fr;gap:1.25rem;padding:1.5rem 0;border-bottom:1px solid var(--border)}
+    .step:first-child{border-top:1.5px solid var(--ink)}
+    .step-num{font-family:var(--serif);font-size:2rem;font-weight:700;color:var(--border);line-height:1.1}
+    .step-tag{display:inline-block;font-size:.6875rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.375rem;padding:.2rem .5rem;border:1px solid var(--border);border-radius:3px}
+    .step-title{font-family:var(--serif);font-size:1.125rem;font-weight:700;margin-bottom:.375rem}
+    .step-body{font-size:.9375rem;color:var(--muted)}
 
-    h1 {
-      font-size: clamp(2rem, 5.5vw, 3.75rem);
-      font-weight: 700;
-      line-height: 1.1;
-      letter-spacing: -0.01em;
-    }
+    /* ── Proof table ── */
+    .proof-meta{margin:1.25rem 0}
+    .proof-grade{font-family:var(--serif);font-size:3rem;font-weight:700;color:var(--fail);line-height:1;display:inline-block;margin-right:.75rem}
+    .proof-score{font-size:.9375rem;color:var(--muted)}
+    .proof-domain{display:block;font-family:var(--mono);font-size:.8125rem;color:var(--muted);margin-top:.375rem}
+    .proof-table{border-top:1.5px solid var(--ink);margin-top:1.5rem}
+    .proof-row{display:grid;grid-template-columns:1.25rem 1fr;gap:.875rem;align-items:start;padding:.875rem 0;border-bottom:1px solid var(--border)}
+    .proof-row:last-child{border-bottom:none}
 
-    h2 {
-      font-size: clamp(1.5rem, 3.5vw, 2.25rem);
-      font-weight: 700;
-      line-height: 1.2;
-    }
+    /* ── Callout ── */
+    .callout{background:rgb(232 255 71 / .12);border:1px solid rgb(232 255 71 / .4);border-radius:4px;padding:1.5rem 1.75rem}
+    .callout h2{font-size:clamp(1.125rem,2.5vw,1.5rem)}
 
-    h3 {
-      font-size: 1.125rem;
-      font-weight: 700;
-      font-family: var(--font-sans);
-    }
+    /* ── Differentiators ── */
+    .diff-list{list-style:none;margin-top:1.75rem}
+    .diff-item{display:grid;grid-template-columns:2.75rem 1fr;gap:1rem;padding:1.5rem 0;border-bottom:1px solid var(--border)}
+    .diff-item:first-child{border-top:1.5px solid var(--ink)}
+    .diff-num{font-family:var(--serif);font-size:.875rem;color:var(--muted);padding-top:.2rem}
+    .diff-title{font-family:var(--serif);font-size:1.25rem;font-weight:700;margin-bottom:.5rem}
+    .diff-body{font-size:.9375rem;color:var(--muted)}
 
-    p { max-width: 65ch; }
+    /* ── Agency section ── */
+    .agency-grid{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-top:2rem}
+    @media(max-width:640px){.agency-grid{grid-template-columns:1fr}}
+    .agency-card{border:1.5px solid var(--border);border-radius:4px;padding:1.5rem}
+    .agency-card--highlight{border-color:var(--ink)}
+    .agency-tag{font-size:.6875rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.75rem;display:block}
+    .agency-price{font-family:var(--serif);font-size:2rem;font-weight:700;line-height:1;margin:.5rem 0 .75rem}
+    .agency-price span{font-size:.875rem;font-weight:400;font-family:var(--sans);color:var(--muted)}
+    .agency-features{list-style:none;font-size:.875rem;color:var(--muted);display:flex;flex-direction:column;gap:.375rem;margin-top:.875rem}
+    .agency-features li::before{content:"✓  ";color:var(--pass);font-weight:700}
 
-    a {
-      color: inherit;
-      text-decoration: underline;
-      text-underline-offset: 3px;
-    }
+    /* ── Pricing ── */
+    .pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-top:2rem}
+    .price-card{border:1.5px solid var(--border);border-radius:4px;padding:1.25rem}
+    .price-card--featured{border-color:var(--ink)}
+    .price-label{font-size:.6875rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+    .price-amount{font-family:var(--serif);font-size:2.25rem;font-weight:700;line-height:1;margin:.375rem 0}
+    .price-period{font-size:.8125rem;color:var(--muted);font-family:var(--sans);font-weight:400}
+    .price-desc{font-size:.875rem;color:var(--muted);margin:.625rem 0 1rem;min-height:2.5rem}
+    .btn-primary{display:inline-block;background:var(--highlight);color:var(--ink);font-family:var(--sans);font-weight:700;font-size:.9375rem;padding:.75rem 1.5rem;border-radius:4px;text-decoration:none;border:none;cursor:pointer;transition:opacity .1s;width:100%;text-align:center}
+    .btn-primary:hover{opacity:.85}
+    .btn-outline{display:inline-block;background:transparent;color:var(--ink);font-family:var(--sans);font-weight:600;font-size:.9375rem;padding:.75rem 1.5rem;border-radius:4px;text-decoration:none;border:1.5px solid var(--border);cursor:pointer;transition:border-color .1s;width:100%;text-align:center}
+    .btn-outline:hover{border-color:var(--ink)}
 
-    /* ── Focus rings ───────────────────────────────────────────────────────── */
-    :focus-visible {
-      outline: 3px solid var(--highlight);
-      outline-offset: 3px;
-    }
+    /* ── FAQ ── */
+    .faq-list{list-style:none;margin-top:1.75rem}
+    details{border-bottom:1px solid var(--border);padding:.875rem 0}
+    details:first-of-type{border-top:1.5px solid var(--ink)}
+    summary{font-weight:600;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:1rem}
+    summary::after{content:"+";font-size:1.25rem;color:var(--muted);flex-shrink:0;font-family:var(--sans);font-weight:400}
+    details[open] summary::after{content:"−"}
+    summary::-webkit-details-marker{display:none}
+    .faq-answer{padding-top:.75rem;font-size:.9375rem;color:var(--muted)}
 
-    /* ── Layout helpers ────────────────────────────────────────────────────── */
-    .container {
-      max-width: var(--max-w);
-      margin: 0 auto;
-      padding: 0 1.5rem;
-    }
+    /* ── Final CTA ── */
+    .final-cta{text-align:center}
+    .final-cta h2{margin-bottom:.75rem}
+    .final-cta p{color:var(--muted);margin:0 auto 2rem}
+    .final-scan-form{display:flex;gap:.625rem;flex-wrap:wrap;max-width:520px;margin:0 auto}
 
-    .container--wide {
-      max-width: var(--max-w-wide);
-      margin: 0 auto;
-      padding: 0 1.5rem;
-    }
+    /* ── Footer ── */
+    footer{border-top:1.5px solid var(--ink);padding:3rem 1.5rem 2rem;margin-top:0}
+    .footer-inner{max-width:1000px;margin:0 auto}
+    .footer-tagline{font-family:var(--serif);font-style:italic;font-size:1rem;margin-bottom:2.5rem;color:var(--ink)}
+    .footer-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2rem;margin-bottom:2.5rem}
+    @media(max-width:640px){.footer-grid{grid-template-columns:repeat(2,1fr)}}
+    .footer-col-title{font-size:.6875rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);margin-bottom:.875rem}
+    .footer-links{list-style:none;display:flex;flex-direction:column;gap:.5rem}
+    .footer-links a{font-size:.875rem;color:var(--muted);text-decoration:none;transition:color .1s}
+    .footer-links a:hover{color:var(--ink)}
+    .footer-bottom{display:flex;flex-wrap:wrap;gap:.5rem 1.5rem;font-size:.8125rem;color:var(--muted);border-top:1px solid var(--border);padding-top:1.25rem}
+    .footer-bottom a{color:var(--muted)}
 
-    /* ── Nav ───────────────────────────────────────────────────────────────── */
-    nav {
-      border-bottom: 1px solid var(--border);
-      padding: 1rem 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      background: var(--paper);
-      z-index: 100;
-    }
-
-    .nav-brand {
-      font-family: var(--font-serif);
-      font-weight: 700;
-      font-size: 1.25rem;
-      text-decoration: none;
-      letter-spacing: -0.01em;
-    }
-
-    .nav-cta {
-      background: var(--highlight);
-      color: var(--ink);
-      font-weight: 700;
-      font-size: 0.875rem;
-      padding: 0.5rem 1.25rem;
-      border-radius: 4px;
-      text-decoration: none;
-      transition: opacity 0.1s;
-    }
-    .nav-cta:hover { opacity: 0.85; }
-
-    /* ── Sections ──────────────────────────────────────────────────────────── */
-    section { padding: 5rem 0; }
-    section + section { border-top: 1px solid var(--border); }
-
-    /* ── Hero ──────────────────────────────────────────────────────────────── */
-    .hero {
-      padding: 5rem 0 4rem;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .hero .container {
-      display: flex;
-      flex-direction: column;
-      gap: 2rem;
-    }
-
-    .hero-label {
-      font-size: 0.6875rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-
-    .hero h1 {
-      color: var(--ink);
-    }
-
-    .hero-sub {
-      font-size: 1.125rem;
-      color: var(--muted);
-      margin-top: -0.75rem;
-    }
-
-    /* ── Scan form ─────────────────────────────────────────────────────────── */
-    .scan-form {
-      display: flex;
-      gap: 0.625rem;
-      flex-wrap: wrap;
-    }
-
-    .scan-input-wrap {
-      flex: 1;
-      min-width: 200px;
-    }
-
-    .scan-input {
-      width: 100%;
-      border: 1.5px solid var(--ink);
-      border-radius: 4px;
-      padding: 0.875rem 1rem;
-      font-family: var(--font-mono);
-      font-size: 0.9375rem;
-      color: var(--ink);
-      background: var(--paper);
-      appearance: none;
-    }
-    .scan-input::placeholder { color: var(--muted); }
-    .scan-input:focus {
-      outline: none;
-      border-color: var(--highlight);
-      box-shadow: 0 0 0 3px oklch(93% 0.22 108 / 0.3);
-    }
-
-    .scan-btn {
-      background: var(--highlight);
-      color: var(--ink);
-      border: none;
-      border-radius: 4px;
-      padding: 0.875rem 1.75rem;
-      font-family: var(--font-sans);
-      font-weight: 700;
-      font-size: 0.9375rem;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: opacity 0.1s;
-    }
-    .scan-btn:hover:not(:disabled) { opacity: 0.85; }
-    .scan-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .scan-note {
-      font-size: 0.8125rem;
-      color: var(--muted);
-      margin-top: -1rem;
-    }
-
-    /* ── Scan result ───────────────────────────────────────────────────────── */
-    .scan-result {
-      opacity: 0;
-      transition: opacity 0.2s ease-out;
-      border: 1.5px solid var(--border);
-      border-radius: 6px;
-      overflow: hidden;
-    }
-    .scan-result.visible { opacity: 1; }
-
-    .result-header {
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
-      padding: 1.25rem 1.5rem;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-    }
-
-    .result-grade {
-      font-family: var(--font-serif);
-      font-size: 3.5rem;
-      font-weight: 700;
-      line-height: 1;
-    }
-
-    .result-meta {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-    .result-score {
-      font-size: 1.375rem;
-      font-weight: 700;
-    }
-    .result-domain {
-      font-size: 0.8125rem;
-      color: var(--muted);
-      font-family: var(--font-mono);
-    }
-
-    .result-blocker {
-      margin: 0;
-      padding: 0.75rem 1.5rem;
-      font-size: 0.875rem;
-      background: oklch(68% 0.18 25 / 0.08);
-      color: oklch(38% 0.18 25);
-      border-bottom: 1px solid oklch(68% 0.18 25 / 0.2);
-    }
-
-    .signal-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .signal-row {
-      display: grid;
-      grid-template-columns: 1.25rem 1fr auto;
-      gap: 0.75rem;
-      align-items: start;
-      padding: 0.75rem 1.5rem;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.9rem;
-    }
-    .signal-row:last-child { border-bottom: none; }
-    .signal-icon { font-weight: 700; }
-    .signal-icon--pass { color: var(--pass); }
-    .signal-icon--fail { color: var(--fail); }
-    .signal-icon--partial { color: oklch(72% 0.15 75); }
-    .signal-name { font-weight: 600; }
-    .signal-detail {
-      grid-column: 2;
-      font-size: 0.8125rem;
-      color: var(--muted);
-      margin-top: 0.125rem;
-    }
-    .signal-badge {
-      font-size: 0.6875rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      padding: 0.2rem 0.5rem;
-      border-radius: 3px;
-      white-space: nowrap;
-    }
-    .badge--pass { background: oklch(72% 0.18 145 / 0.12); color: oklch(42% 0.18 145); }
-    .badge--fail { background: oklch(68% 0.18 25 / 0.12); color: oklch(38% 0.18 25); }
-    .badge--partial { background: oklch(72% 0.15 75 / 0.12); color: oklch(48% 0.15 75); }
-
-    .scan-error {
-      color: oklch(38% 0.18 25);
-      font-size: 0.875rem;
-      padding: 0.5rem 0;
-    }
-
-    /* ── Proof section ─────────────────────────────────────────────────────── */
-    .proof-table {
-      width: 100%;
-      border-top: 1.5px solid var(--ink);
-      margin-top: 2rem;
-    }
-
-    .proof-row {
-      display: grid;
-      grid-template-columns: 1.25rem 1fr;
-      gap: 0.875rem;
-      align-items: start;
-      padding: 0.875rem 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .proof-domain {
-      font-family: var(--font-mono);
-      font-size: 0.8125rem;
-      color: var(--muted);
-      margin-bottom: 0.5rem;
-      display: block;
-    }
-
-    .proof-grade-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.75rem;
-      margin-bottom: 1.5rem;
-    }
-    .proof-grade-letter {
-      font-family: var(--font-serif);
-      font-size: 2.5rem;
-      font-weight: 700;
-      color: oklch(68% 0.18 25);
-      line-height: 1;
-    }
-    .proof-grade-score {
-      font-size: 0.875rem;
-      color: var(--muted);
-    }
-
-    /* ── Numbered differentiators ──────────────────────────────────────────── */
-    .diff-list {
-      list-style: none;
-      counter-reset: diff;
-      margin-top: 2rem;
-    }
-
-    .diff-item {
-      counter-increment: diff;
-      display: grid;
-      grid-template-columns: 3rem 1fr;
-      gap: 1rem;
-      padding: 1.5rem 0;
-      border-bottom: 1px solid var(--border);
-    }
-    .diff-item:first-child { border-top: 1.5px solid var(--ink); }
-
-    .diff-num {
-      font-family: var(--font-serif);
-      font-size: 0.875rem;
-      color: var(--muted);
-      padding-top: 0.2rem;
-    }
-
-    .diff-title {
-      font-family: var(--font-serif);
-      font-size: 1.25rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-    }
-
-    .diff-body {
-      font-size: 0.9375rem;
-      color: var(--muted);
-    }
-
-    /* ── Fix steps ─────────────────────────────────────────────────────────── */
-    .fix-steps {
-      list-style: none;
-      counter-reset: step;
-      margin-top: 2rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-    }
-
-    .fix-step {
-      counter-increment: step;
-      display: grid;
-      grid-template-columns: 2.5rem 1fr;
-      gap: 1.25rem;
-      padding: 1.5rem 0;
-      border-bottom: 1px solid var(--border);
-    }
-    .fix-step:first-child { border-top: 1.5px solid var(--ink); }
-
-    .fix-step-num {
-      font-family: var(--font-serif);
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--border);
-      line-height: 1.1;
-    }
-
-    .fix-step-title {
-      font-family: var(--font-serif);
-      font-size: 1.125rem;
-      font-weight: 700;
-      margin-bottom: 0.375rem;
-    }
-
-    .fix-step-body {
-      font-size: 0.9375rem;
-      color: var(--muted);
-    }
-
-    .fix-step-code {
-      margin-top: 0.625rem;
-      font-family: var(--font-mono);
-      font-size: 0.8125rem;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 3px;
-      padding: 0.5rem 0.75rem;
-      color: var(--ink);
-    }
-
-    /* ── Pricing ───────────────────────────────────────────────────────────── */
-    .pricing-line {
-      font-size: 1.0625rem;
-      margin-bottom: 2rem;
-    }
-
-    .btn-primary {
-      display: inline-block;
-      background: var(--highlight);
-      color: var(--ink);
-      font-family: var(--font-sans);
-      font-weight: 700;
-      font-size: 1rem;
-      padding: 0.875rem 2rem;
-      border-radius: 4px;
-      text-decoration: none;
-      border: none;
-      cursor: pointer;
-      transition: opacity 0.1s;
-    }
-    .btn-primary:hover { opacity: 0.85; }
-
-    /* ── Footer ────────────────────────────────────────────────────────────── */
-    footer {
-      border-top: 1.5px solid var(--ink);
-      padding: 2rem 1.5rem;
-      font-size: 0.8125rem;
-      color: var(--muted);
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem 1.5rem;
-      align-items: center;
-    }
-
-    footer a { color: var(--muted); }
-
-    /* ── Responsive ────────────────────────────────────────────────────────── */
-    @media (max-width: 600px) {
-      section { padding: 3.5rem 0; }
-      .hero { padding: 3.5rem 0 3rem; }
-      .scan-form { flex-direction: column; }
-      .scan-btn { width: 100%; }
-      .diff-item { grid-template-columns: 1fr; gap: 0.5rem; }
-      .fix-step { grid-template-columns: 1fr; gap: 0.5rem; }
-      .fix-step-num { font-size: 1.25rem; color: var(--muted); }
-    }
-
-    /* ── Reduced motion ────────────────────────────────────────────────────── */
-    @media (prefers-reduced-motion: reduce) {
-      .scan-result { transition: none; }
-    }
+    /* ── Responsive ── */
+    @media(max-width:640px){section{padding:3rem 0}.hero{padding:3rem 0 2.5rem}.scan-form{flex-direction:column}.scan-btn{width:100%}.diff-item{grid-template-columns:1fr;gap:.5rem}.step{grid-template-columns:1fr;gap:.5rem}.step-num{font-size:1.25rem;color:var(--muted)}}
+    @media(prefers-reduced-motion:reduce){.scan-result{transition:none}}
   </style>
 </head>
-
 <body>
-  <a href="#main" class="skip-nav">Skip to content</a>
+  <a href="#main" class="skip">Skip to content</a>
 
-  <!-- ── Nav ──────────────────────────────────────────────────────────────── -->
+  <!-- ── Nav ── -->
   <nav aria-label="Site navigation">
-    <a href="/" class="nav-brand" aria-label="Legibly home">legibly</a>
-    <a href="#scan-form" class="nav-cta">Scan free →</a>
+    <a href="/landing.html" class="nav-brand">legibly</a>
+    <div class="nav-links" role="list">
+      <a href="#how-it-works" class="nav-link" role="listitem">How it works</a>
+      <a href="#pricing" class="nav-link" role="listitem">Pricing</a>
+      <a href="#faq" class="nav-link" role="listitem">FAQ</a>
+      <a href="https://github.com/Remekie/legibly" class="nav-link" rel="noopener" role="listitem">GitHub</a>
+    </div>
+    <a href="https://legibly-production.up.railway.app" class="nav-cta">Scan free →</a>
   </nav>
 
   <main id="main">
 
-    <!-- ── Hero ─────────────────────────────────────────────────────────────── -->
-    <section class="hero" aria-labelledby="hero-heading">
+    <!-- ── Hero ── -->
+    <section class="hero" aria-labelledby="hero-h1">
       <div class="container">
-        <span class="hero-label">AI Visibility Diagnostic</span>
-        <h1 id="hero-heading">Why doesn't your business show up when someone asks ChatGPT?</h1>
-        <p class="hero-sub">Your customers are asking AI for recommendations. If your site isn't set up correctly, AI can't read it — and recommends your competitors instead. Paste your URL and find out in 30 seconds.</p>
+        <span class="eyebrow">AI Visibility Diagnostic</span>
+        <h1 id="hero-h1" style="margin-top:.5rem">Why doesn't your business show up when someone asks ChatGPT?</h1>
+        <p class="hero-sub">Your customers are asking AI for recommendations. If your site isn't set up correctly, AI can't read it — and recommends your competitors instead.</p>
 
         <form id="scan-form" class="scan-form" novalidate aria-label="Free AI visibility scan">
           <div class="scan-input-wrap">
-            <label for="url-input" class="sr-only" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">Your website URL</label>
-            <input
-              id="url-input"
-              type="url"
-              class="scan-input"
-              placeholder="yoursite.com"
-              autocomplete="url"
-              inputmode="url"
-              aria-required="true"
-              aria-describedby="scan-hint scan-error"
-            >
+            <label for="url-input" class="sr-only">Your website URL</label>
+            <input id="url-input" type="url" class="scan-input" placeholder="yoursite.com"
+              autocomplete="url" inputmode="url" aria-required="true"
+              aria-describedby="scan-hint scan-error" />
           </div>
-          <button type="submit" class="scan-btn" id="scan-btn" aria-busy="false">
-            Scan free
-          </button>
+          <button type="submit" class="scan-btn" id="scan-btn" aria-busy="false">Scan free</button>
         </form>
         <p id="scan-hint" class="scan-note">Free. No account. No credit card.</p>
         <p id="scan-error" class="scan-error" role="alert" aria-live="polite" hidden></p>
-
         <div id="scan-result" class="scan-result" hidden aria-live="polite" aria-atomic="true"></div>
       </div>
     </section>
 
-    <!-- ── Proof ─────────────────────────────────────────────────────────────── -->
+    <!-- ── Stats bar ── -->
+    <div class="stats-bar" role="region" aria-label="Platform statistics">
+      <div class="stats-inner">
+        <div class="stat-item">
+          <span class="stat-num">7</span>
+          <span class="stat-label">signals checked per scan</span>
+        </div>
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="stat-item">
+          <span class="stat-num">30s</span>
+          <span class="stat-label">to your grade</span>
+        </div>
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="stat-item">
+          <span class="stat-num">$0</span>
+          <span class="stat-label">to scan and grade</span>
+        </div>
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="stat-item">
+          <span class="stat-num">67%</span>
+          <span class="stat-label">of sites fail structured data</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── How it works ── -->
+    <section id="how-it-works" aria-labelledby="hiw-heading">
+      <div class="container">
+        <span class="eyebrow">How it works</span>
+        <h2 id="hiw-heading" style="margin-top:.5rem">Three steps from invisible to cited.</h2>
+        <ol class="steps" aria-label="How Legibly works">
+          <li class="step">
+            <span class="step-num" aria-hidden="true">1</span>
+            <div>
+              <span class="step-tag">Free · No account</span>
+              <div class="step-title">We visit your site the way AI does.</div>
+              <p class="step-body">No browser, no interactive code — just the raw content. We grade 7 signals A–F and show you exactly which ones are failing. Takes 30 seconds.</p>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step-num" aria-hidden="true">2</span>
+            <div>
+              <span class="step-tag">$79 · Full report</span>
+              <div class="step-title">You see exactly what's broken and why.</div>
+              <p class="step-body">A complete report: the prompts your customers are typing where competitors appear instead of you, the specific information AI can't find on your site, and copy-paste fixes for everything.</p>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step-num" aria-hidden="true">3</span>
+            <div>
+              <span class="step-tag">$99 · Report + fix</span>
+              <div class="step-title">We send the fixes. You approve. Grade improves.</div>
+              <p class="step-body">Connect your site's code and we prepare every fix automatically — ready to approve in one click. Your site updates. You scan again and see the before/after.</p>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ── Proof ── -->
     <section aria-labelledby="proof-heading">
       <div class="container">
-        <span class="hero-label" aria-hidden="true">Example scan · Real findings</span>
-        <h2 id="proof-heading">This is what Legibly found on a site built last month.</h2>
-        <p>AI crawlers don't browse websites the way people do — they read the page's raw code. This site was built with a popular no-code tool that creates interactive apps. When an AI crawler visited it, the page was empty. Not the product description. Not the pricing. Not the company name. Nothing. ChatGPT has never read a single word the founder wrote.</p>
+        <span class="eyebrow">Example scan · Real findings</span>
+        <h2 id="proof-heading" style="margin-top:.5rem">This is what Legibly found on a site built last month.</h2>
+        <p>AI crawlers don't browse websites the way people do — they read the page's raw code. This site was built with a popular no-code tool. When an AI crawler visited it, the page was empty. Not the product description. Not the pricing. Not the company name. Nothing.</p>
 
-        <div class="proof-grade-badge">
-          <span class="proof-grade-letter" aria-label="Grade F" style="color:var(--fail)">F</span>
-          <span class="proof-grade-score">12 / 100 AI Visibility Score</span>
+        <div class="proof-meta">
+          <span class="proof-grade" aria-label="Grade F">F</span>
+          <span class="proof-score">12 / 100 AI Visibility Score</span>
+          <code class="proof-domain">myapp.lovable.app</code>
         </div>
-        <code class="proof-domain">myapp.lovable.app</code>
 
         <div role="table" aria-label="Signal diagnostic results" class="proof-table">
           <div role="rowgroup">
-            <div role="row" class="proof-row">
-              <span class="signal-icon signal-icon--fail" aria-hidden="true">✗</span>
-              <div>
-                <div class="signal-name">AI crawler rendering</div>
-                <div class="signal-detail">AI can't read this site. It's built with an app framework that requires a browser to run — AI crawlers don't do that. Every word, price, and feature is invisible.</div>
-              </div>
-            </div>
-            <div role="row" class="proof-row">
-              <span class="signal-icon signal-icon--pass" aria-hidden="true">✓</span>
-              <div>
-                <div class="signal-name">Crawler access</div>
-                <div class="signal-detail">No AI blocks detected in robots.txt.</div>
-              </div>
-            </div>
-            <div role="row" class="proof-row">
-              <span class="signal-icon signal-icon--fail" aria-hidden="true">✗</span>
-              <div>
-                <div class="signal-name">Structured data</div>
-                <div class="signal-detail">No structured information found. AI is guessing what this business does — and usually guesses wrong or skips it entirely.</div>
-              </div>
-            </div>
-            <div role="row" class="proof-row">
-              <span class="signal-icon signal-icon--fail" aria-hidden="true">✗</span>
-              <div>
-                <div class="signal-name">llms.txt file</div>
-                <div class="signal-detail">No AI guide file found. There's a simple text file you can add that tells AI exactly what your business does — it's missing.</div>
-              </div>
-            </div>
-            <div role="row" class="proof-row">
-              <span class="signal-icon signal-icon--fail" aria-hidden="true">✗</span>
-              <div>
-                <div class="signal-name">Answer-first content</div>
-                <div class="signal-detail">No readable content — so there's nothing for AI to quote or recommend. Most sites fail this when their content can't be read without running a browser.</div>
-              </div>
-            </div>
-            <div role="row" class="proof-row">
-              <span class="signal-icon signal-icon--fail" aria-hidden="true">✗</span>
-              <div>
-                <div class="signal-name">Brand trust signals</div>
-                <div class="signal-detail">AI has no way to verify this business is real. No company information, no links to social profiles — nothing to cross-reference.</div>
-              </div>
-            </div>
-            <div role="row" class="proof-row">
-              <span class="signal-icon signal-icon--fail" aria-hidden="true">✗</span>
-              <div>
-                <div class="signal-name">Page metadata</div>
-                <div class="signal-detail">Generic title, no meta description, no OG tags. AI engines can't understand what this page is about.</div>
-              </div>
-            </div>
+            <div role="row" class="proof-row"><span class="sig-icon sig-fail" aria-hidden="true">✗</span><div><div class="sig-name">AI crawler rendering</div><div class="sig-detail">The whole page requires a browser to display. AI crawlers don't have one. Every word is invisible.</div></div></div>
+            <div role="row" class="proof-row"><span class="sig-icon sig-pass" aria-hidden="true">✓</span><div><div class="sig-name">Crawler access</div><div class="sig-detail">No blocks detected — AI is allowed to visit, it just can't read anything when it does.</div></div></div>
+            <div role="row" class="proof-row"><span class="sig-icon sig-fail" aria-hidden="true">✗</span><div><div class="sig-name">Structured data</div><div class="sig-detail">No structured business information found. AI is guessing what this business does — and usually guesses wrong.</div></div></div>
+            <div role="row" class="proof-row"><span class="sig-icon sig-fail" aria-hidden="true">✗</span><div><div class="sig-name">AI guide file</div><div class="sig-detail">No plain-language guide for AI engines. There's a simple file you can add that tells AI exactly what your business does — it's missing.</div></div></div>
+            <div role="row" class="proof-row"><span class="sig-icon sig-fail" aria-hidden="true">✗</span><div><div class="sig-name">Answer-first content</div><div class="sig-detail">No readable content at all — let alone an opening sentence that describes the business clearly.</div></div></div>
+            <div role="row" class="proof-row"><span class="sig-icon sig-fail" aria-hidden="true">✗</span><div><div class="sig-name">Brand trust signals</div><div class="sig-detail">AI has no way to verify this business is real. No company information, no links to verify the brand.</div></div></div>
+            <div role="row" class="proof-row"><span class="sig-icon sig-fail" aria-hidden="true">✗</span><div><div class="sig-name">Page metadata</div><div class="sig-detail">No title, no description, no social tags. AI engines cannot understand what this page is about.</div></div></div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ── Lovable callout ──────────────────────────────────────────────────── -->
-    <section aria-labelledby="lovable-heading" style="background:oklch(97% 0.06 108);">
+    <!-- ── Lovable callout ── -->
+    <section aria-labelledby="lovable-heading" style="padding:3rem 0">
       <div class="container">
-        <span class="hero-label" style="color:oklch(55% 0.15 108)">Built with Lovable, Bolt, or v0?</span>
-        <h2 id="lovable-heading" style="font-size:clamp(1.25rem,3vw,1.75rem)">This is exactly why your site doesn't show up.</h2>
-        <p>These tools build React apps — which look great in a browser but are invisible to AI. When ChatGPT tries to read your site, it sees an empty page. This is the single most common reason Lovable-built products get zero AI search traffic, and Legibly fixes it automatically.</p>
+        <div class="callout">
+          <span class="eyebrow" style="color:#92702a">Built with Lovable, Bolt, or v0?</span>
+          <h2 id="lovable-heading" style="margin:.5rem 0 .75rem;font-size:clamp(1.25rem,3vw,1.75rem)">This is exactly why your site doesn't show up.</h2>
+          <p style="color:var(--muted)">These tools create interactive apps that look great in a browser but are invisible to AI. When ChatGPT tries to read your site, it sees a blank page. This is the single most common reason Lovable-built products get zero AI search traffic — and Legibly fixes it automatically.</p>
+          <a href="https://legibly-production.up.railway.app" style="display:inline-block;margin-top:1.25rem;background:var(--ink);color:var(--paper);font-weight:700;font-size:.9375rem;padding:.75rem 1.5rem;border-radius:4px;text-decoration:none;transition:opacity .1s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">Check your site →</a>
+        </div>
       </div>
     </section>
 
-    <!-- ── Differentiators ───────────────────────────────────────────────────── -->
+    <!-- ── Differentiators ── -->
     <section aria-labelledby="diff-heading">
       <div class="container">
-        <span class="hero-label" aria-hidden="true">What makes Legibly different</span>
-        <h2 id="diff-heading">Three signals your SEO tool isn't checking.</h2>
-
+        <span class="eyebrow">What makes Legibly different</span>
+        <h2 id="diff-heading" style="margin-top:.5rem">Three signals your SEO tool isn't checking.</h2>
         <ol class="diff-list" aria-label="Legibly differentiators">
           <li class="diff-item">
             <span class="diff-num" aria-hidden="true">01</span>
             <div>
               <div class="diff-title">What AI actually reads on your page</div>
-              <p class="diff-body">We visit your site the way an AI crawler does — without running any interactive code — and count exactly how many words it can read. Most tools give you a score. We show you the actual words that are missing.</p>
+              <p class="diff-body">We visit your site the way an AI crawler does and count exactly how many words it can read. Most tools give you a score. We show you the actual content that's missing — specific product names, prices, and descriptions that AI can't see.</p>
             </div>
           </li>
           <li class="diff-item">
             <span class="diff-num" aria-hidden="true">02</span>
             <div>
               <div class="diff-title">Which competitors AI recommends instead of you</div>
-              <p class="diff-body">We run the questions your customers are actually asking AI — and check whether your business comes up. If it doesn't, you see exactly which competitors are being recommended in your place.</p>
+              <p class="diff-body">We run the questions your customers are actually asking AI — and check whether your business comes up. You see exactly which competitors are being recommended in your place, and on which specific questions.</p>
             </div>
           </li>
           <li class="diff-item">
@@ -704,186 +367,226 @@
       </div>
     </section>
 
-    <!-- ── The Fix ───────────────────────────────────────────────────────────── -->
-    <section aria-labelledby="fix-heading" style="background: var(--surface);">
+    <!-- ── For agencies ── -->
+    <section aria-labelledby="agency-heading" style="background:var(--surface)">
       <div class="container">
-        <span class="hero-label" aria-hidden="true">How the fix works</span>
-        <h2 id="fix-heading">We send the fixes. You approve. Grade confirmed.</h2>
-
-        <ol class="fix-steps" aria-label="How Legibly fixes your site">
-          <li class="fix-step">
-            <span class="fix-step-num" aria-hidden="true">1</span>
-            <div>
-              <div class="fix-step-title">We visit your site the way AI does.</div>
-              <p class="fix-step-body">No browser, no interactive code — just the raw content. We measure exactly what AI receives versus what your customers see.</p>
-            </div>
-          </li>
-          <li class="fix-step">
-            <span class="fix-step-num" aria-hidden="true">2</span>
-            <div>
-              <div class="fix-step-title">We prepare every fix and send it to your site.</div>
-              <p class="fix-step-body">We make your content readable by AI, add a plain-language guide for AI crawlers, and add structured information about your business — all in one ready-to-approve change.</p>
-              <div class="fix-step-code" aria-label="Example change description">Change: "Fix AI visibility — grade F → B (Legibly)"</div>
-            </div>
-          </li>
-          <li class="fix-step">
-            <span class="fix-step-num" aria-hidden="true">3</span>
-            <div>
-              <div class="fix-step-title">You approve it. Your grade improves.</div>
-              <p class="fix-step-body">Click approve, wait for your site to update, then scan again. The before/after grade is the proof — and it's the screenshot people share.</p>
-            </div>
-          </li>
-        </ol>
+        <span class="eyebrow">For agencies</span>
+        <h2 id="agency-heading" style="margin-top:.5rem">Run AI visibility audits for all your clients.</h2>
+        <p style="color:var(--muted)">White-label reports with your branding. Bulk scanning. Client dashboard showing all grades at a glance. Your clients see your logo — not ours.</p>
+        <div class="agency-grid" style="margin-top:1.75rem">
+          <div class="agency-card">
+            <span class="agency-tag" style="color:var(--muted)">Individual reports</span>
+            <div style="font-family:var(--serif);font-size:1.125rem;font-weight:700;margin:.5rem 0 .625rem">Per-client reports</div>
+            <p style="font-size:.875rem;color:var(--muted);margin-bottom:1rem">Buy reports for specific clients. Each report includes full diagnostic, prompts, fixes, and PDF.</p>
+            <a href="https://legibly-production.up.railway.app" class="btn-outline">Scan a client site</a>
+          </div>
+          <div class="agency-card agency-card--highlight">
+            <span class="agency-tag" style="color:var(--ink)">Most popular for agencies</span>
+            <div class="agency-price">$149<span>/mo</span></div>
+            <p style="font-size:.875rem;color:var(--muted);margin-bottom:1rem">Unlimited reports. Your branding. Client dashboard. Bulk CSV. Slack alerts when a client score drops.</p>
+            <ul class="agency-features">
+              <li>Unlimited client scans</li>
+              <li>White-label PDF reports</li>
+              <li>Bulk CSV upload</li>
+              <li>Client dashboard</li>
+              <li>Slack webhook alerts</li>
+            </ul>
+            <a href="mailto:hello@legibly.dev?subject=Agency%20Plan" class="btn-primary" style="margin-top:1rem">Get agency access</a>
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- ── Pricing ───────────────────────────────────────────────────────────── -->
-    <section aria-labelledby="pricing-heading">
+    <!-- ── Pricing ── -->
+    <section id="pricing" aria-labelledby="pricing-heading">
       <div class="container">
-        <span class="hero-label" aria-hidden="true">Pricing</span>
-        <h2 id="pricing-heading">The scan is always free.</h2>
-        <p class="pricing-line">
-          Full diagnostic report — prompts, schema snippets, generated llms.txt, citation check, PDF: <strong>$79.</strong><br>
-          Report plus a ready-to-merge GitHub PR that deploys every fix: <strong>$99.</strong><br>
-          Monthly monitoring and re-scanning: <strong>$79/mo.</strong> Agencies running client audits: <strong>$149/mo</strong> white-label.
-        </p>
-        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center;">
-          <a href="https://legibly-production.up.railway.app" class="btn-primary">
-            Scan your site free →
-          </a>
-          <a href="https://legibly-production.up.railway.app" style="font-size:0.9375rem;color:var(--muted);text-decoration:underline;text-underline-offset:3px;">
-            Get the full report for $79
-          </a>
+        <span class="eyebrow">Pricing</span>
+        <h2 id="pricing-heading" style="margin-top:.5rem">The scan is always free.</h2>
+        <div class="pricing-grid">
+          <div class="price-card">
+            <div class="price-label">Free</div>
+            <div class="price-amount">$0</div>
+            <p class="price-desc">Grade + 7 signal pass/fail. No account required.</p>
+            <a href="https://legibly-production.up.railway.app" class="btn-outline">Scan free</a>
+          </div>
+          <div class="price-card price-card--featured">
+            <div class="price-label">Full report</div>
+            <div class="price-amount">$79</div>
+            <p class="price-desc">Prompts, schema snippets, generated llms.txt, citation check, PDF.</p>
+            <a href="https://legibly-production.up.railway.app" class="btn-primary">Get report</a>
+          </div>
+          <div class="price-card">
+            <div class="price-label">Report + fix</div>
+            <div class="price-amount">$99</div>
+            <p class="price-desc">Full report plus a ready-to-approve fix for your site's code.</p>
+            <a href="https://legibly-production.up.railway.app" class="btn-outline">Get report + fix</a>
+          </div>
+          <div class="price-card">
+            <div class="price-label">Monitoring</div>
+            <div class="price-amount">$79<span style="font-size:.875rem;font-weight:400;font-family:var(--sans);color:var(--muted)">/mo</span></div>
+            <p class="price-desc">Monthly rescan, citation tracking, alerts when score drops.</p>
+            <a href="mailto:hello@legibly.dev?subject=Monitoring" class="btn-outline">Get monitoring</a>
+          </div>
         </div>
+      </div>
+    </section>
+
+    <!-- ── FAQ ── -->
+    <section id="faq" aria-labelledby="faq-heading">
+      <div class="container">
+        <span class="eyebrow">FAQ</span>
+        <h2 id="faq-heading" style="margin-top:.5rem">Common questions.</h2>
+        <div style="margin-top:1.75rem">
+          <details>
+            <summary>Why doesn't my site show up in ChatGPT or Perplexity?</summary>
+            <p class="faq-answer">Usually one of three reasons: (1) Your site is built with a JavaScript framework and AI crawlers can't read it without a browser, (2) you're blocking AI crawlers in your site's settings, or (3) your site has no structured information that tells AI what your business does. Legibly checks all three in 30 seconds.</p>
+          </details>
+          <details>
+            <summary>What's the difference between AI search and regular Google search?</summary>
+            <p class="faq-answer">Google runs JavaScript and indexes your site like a browser would. AI crawlers — GPTBot, ClaudeBot, PerplexityBot — do not. They read raw HTML only. A site that ranks well on Google can be completely invisible to AI if it relies on JavaScript to display its content.</p>
+          </details>
+          <details>
+            <summary>I built my site with Lovable / Bolt / v0. Is that a problem?</summary>
+            <p class="faq-answer">Yes — by default. These tools build React apps that require JavaScript to display content. When an AI crawler visits, it sees an empty page. Legibly's $99 fix automatically resolves this by adding a pre-rendering step that serves real HTML to AI crawlers, without changing how your site looks to human visitors.</p>
+          </details>
+          <details>
+            <summary>What does the $79 report include?</summary>
+            <p class="faq-answer">A full diagnostic: the prompts your customers are typing where competitors appear instead of you, copy-paste structured data code for your site, a generated AI guide file (llms.txt), a check of whether your business appears in AI answers, and a downloadable PDF of everything.</p>
+          </details>
+          <details>
+            <summary>How does the $99 fix work?</summary>
+            <p class="faq-answer">You connect your GitHub repository. We detect what your site is built with, generate all the fixes, and open a pull request — a ready-to-approve code change. Your developer (or you, if you built with Lovable) reviews and approves it. Your site rebuilds with everything fixed.</p>
+          </details>
+          <details>
+            <summary>Do I need to be technical to use Legibly?</summary>
+            <p class="faq-answer">No. The free scan requires only your URL. The $79 report requires only your email and a credit card. The $99 fix requires access to your site's code repository — if you don't have that, you can forward the report to your developer and they can implement everything from the instructions.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Final CTA ── -->
+    <section aria-labelledby="final-cta-heading" class="final-cta" style="background:var(--surface)">
+      <div class="container">
+        <h2 id="final-cta-heading">Find out if AI can read your site.</h2>
+        <p>Free. 30 seconds. No account required.</p>
+        <form id="scan-form-2" class="final-scan-form" novalidate aria-label="Free AI visibility scan (footer)">
+          <div class="scan-input-wrap">
+            <label for="url-input-2" class="sr-only">Your website URL</label>
+            <input id="url-input-2" type="url" class="scan-input" placeholder="yoursite.com"
+              autocomplete="url" inputmode="url" aria-required="true" />
+          </div>
+          <button type="submit" class="scan-btn">Scan free</button>
+        </form>
+        <p id="scan-error-2" class="scan-error" style="text-align:center" role="alert" aria-live="polite" hidden></p>
       </div>
     </section>
 
   </main>
 
-  <!-- ── Footer ───────────────────────────────────────────────────────────── -->
+  <!-- ── Footer ── -->
   <footer>
-    <span style="color:var(--ink);font-style:italic;">The only scanner that tells you what AI reads on your site — then fixes it.</span>
-    <span style="color:var(--border)">·</span>
-    <a href="https://github.com/Remekie/legibly" rel="noopener">github.com/Remekie/legibly</a>
-    <span>legibly.dev</span>
-    <span>2026</span>
-    <a href="/llms.txt">/llms.txt</a>
+    <div class="footer-inner">
+      <p class="footer-tagline">The only scanner that tells you what AI reads on your site — then fixes it.</p>
+      <div class="footer-grid">
+        <div>
+          <div class="footer-col-title">Product</div>
+          <ul class="footer-links">
+            <li><a href="#how-it-works">How it works</a></li>
+            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="https://legibly-production.up.railway.app">Free scan</a></li>
+            <li><a href="#faq">FAQ</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-col-title">Solutions</div>
+          <ul class="footer-links">
+            <li><a href="#lovable-heading">Lovable / Bolt / v0 sites</a></li>
+            <li><a href="#agency-heading">Agencies</a></li>
+            <li><a href="#diff-heading">Small businesses</a></li>
+            <li><a href="#diff-heading">Developers</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-col-title">Compare</div>
+          <ul class="footer-links">
+            <li><a href="#">vs PromptScout</a></li>
+            <li><a href="#">vs Metricus</a></li>
+            <li><a href="#">vs Otterly</a></li>
+            <li><a href="#">vs Cognizo</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-col-title">Company</div>
+          <ul class="footer-links">
+            <li><a href="https://github.com/Remekie/legibly" rel="noopener">GitHub</a></li>
+            <li><a href="mailto:hello@legibly.dev">Contact</a></li>
+            <li><a href="/llms.txt">/llms.txt</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>legibly.dev</span>
+        <span>2026</span>
+        <a href="https://github.com/Remekie/legibly" rel="noopener">github.com/Remekie/legibly</a>
+      </div>
+    </div>
   </footer>
 
   <script>
-    // ── Scan form ─────────────────────────────────────────────────────────────
-    const SCAN_API = 'https://legibly-production.up.railway.app/api/scan';
+    const SCAN_API='https://legibly-production.up.railway.app/api/scan';
+    const LABELS={prerender:'AI crawler rendering',robots:'Crawler access',schema:'Structured data',llmstxt:'AI guide file',content:'Answer-first content',eeat:'Brand trust signals',metadata:'Page metadata'};
+    function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+    function status(score,stub){if(stub)return'stub';if(score>=8)return'pass';if(score>0)return'partial';return'fail'}
 
-    const form      = document.getElementById('scan-form');
-    const input     = document.getElementById('url-input');
-    const btn       = document.getElementById('scan-btn');
-    const errorEl   = document.getElementById('scan-error');
-    const resultEl  = document.getElementById('scan-result');
-
-    const SIGNAL_LABELS = {
-      prerender: 'AI crawler rendering',
-      robots:    'Crawler access',
-      schema:    'Structured data',
-      llmstxt:   'llms.txt file',
-      content:   'Answer-first content',
-      eeat:      'Brand trust signals',
-      metadata:  'Page metadata',
-    };
-
-    function esc(str) {
-      return String(str ?? '')
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    }
-
-    function signalStatus(score, stub) {
-      if (stub) return 'stub';
-      if (score >= 8) return 'pass';
-      if (score > 0)  return 'partial';
-      return 'fail';
-    }
-
-    function renderResult(data) {
-      const { grade, score, blocker, signals } = data;
-      const gradeColors = { A:'var(--pass)', B:'#a3e635', C:'#facc15', D:'#fb923c', F:'var(--fail)' };
-      const gradeColor = gradeColors[grade] ?? 'var(--fail)';
-
-      const signalRows = Object.entries(signals ?? {}).map(([key, s]) => {
-        const status = signalStatus(s.score, s.stub);
-        const icon   = status === 'pass' ? '✓' : status === 'fail' ? '✗' : '·';
-        const iconCls = status === 'pass' ? 'pass' : status === 'fail' ? 'fail' : 'partial';
-        const badgeTxt = status === 'pass' ? 'Passing' : status === 'fail' ? 'Failing' : status === 'stub' ? 'In report' : 'Partial';
-        return `<div class="signal-row">
-          <span class="signal-icon signal-icon--${esc(iconCls)}" aria-hidden="true">${icon}</span>
-          <div>
-            <div class="signal-name">${esc(SIGNAL_LABELS[key] ?? key)}</div>
-            <div class="signal-detail">${esc(s.detail ?? '')}</div>
-          </div>
-          <span class="signal-badge badge--${esc(status === 'stub' ? 'partial' : status)}">${esc(badgeTxt)}</span>
-        </div>`;
+    function renderResult(data,resultEl){
+      const{grade,score,blocker,signals}=data;
+      const gc={A:'var(--pass)',B:'#a3e635',C:'#facc15',D:'#fb923c',F:'var(--fail)'};
+      const rows=Object.entries(signals??{}).map(([k,s])=>{
+        const st=status(s.score,s.stub);
+        const ic=st==='pass'?'✓':st==='fail'?'✗':'·';
+        const cl=st==='pass'?'sig-pass':st==='fail'?'sig-fail':'sig-partial';
+        const bl=st==='pass'?'Passing':st==='fail'?'Failing':st==='stub'?'In report':'Partial';
+        const bc=st==='pass'?'badge-pass':st==='fail'?'badge-fail':'badge-partial';
+        return`<div class="signal-row"><span class="${cl} sig-icon" aria-hidden="true">${ic}</span><div><div class="sig-name">${esc(LABELS[k]??k)}</div><div class="sig-detail">${esc(s.detail??'')}</div></div><span class="sig-badge ${bc}">${bl}</span></div>`;
       }).join('');
-
-      resultEl.innerHTML = `
-        <div class="result-header">
-          <span class="result-grade" style="color:${gradeColor}" aria-label="Grade ${esc(grade)}">${esc(grade)}</span>
-          <div class="result-meta">
-            <div class="result-score">${esc(String(score))}/100</div>
-            <div class="result-domain">${esc(input.value.trim())}</div>
-          </div>
-        </div>
-        ${blocker ? `<p class="result-blocker">⚠ ${esc(blocker)}</p>` : ''}
-        <div aria-label="Signal breakdown">${signalRows}</div>
-      `;
-
+      resultEl.innerHTML=`<div class="result-header"><span class="result-grade" style="color:${gc[grade]??'var(--fail)'}" aria-label="Grade ${esc(grade)}">${esc(grade)}</span><div class="result-meta"><div class="result-score">${esc(String(score))}/100</div><div class="result-domain">${esc(document.getElementById('url-input')?.value?.trim()??'')}</div></div></div>${blocker?`<p class="result-blocker">⚠ ${esc(blocker)}</p>`:''}<div>${rows}</div>`;
       resultEl.removeAttribute('hidden');
-      // Trigger fade-in (requestAnimationFrame ensures paint happens first)
-      requestAnimationFrame(() => requestAnimationFrame(() => resultEl.classList.add('visible')));
-      resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      requestAnimationFrame(()=>requestAnimationFrame(()=>resultEl.classList.add('visible')));
+      resultEl.scrollIntoView({behavior:'smooth',block:'nearest'});
     }
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      errorEl.hidden = true;
-      resultEl.hidden = true;
-      resultEl.classList.remove('visible');
-
-      const raw = input.value.trim();
-      if (!raw) {
-        errorEl.textContent = 'Please enter a URL.';
-        errorEl.hidden = false;
-        input.focus();
-        return;
-      }
-
-      btn.disabled = true;
-      btn.textContent = 'Scanning…';
-      btn.setAttribute('aria-busy', 'true');
-
-      try {
-        const url = raw.startsWith('http') ? raw : `https://${raw}`;
-        const res  = await fetch(SCAN_API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url }),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error ?? 'Scan failed');
+    function setupForm(formId,inputId,errorId,resultId){
+      const form=document.getElementById(formId);
+      const input=document.getElementById(inputId);
+      const errEl=document.getElementById(errorId);
+      const btn=form?.querySelector('.scan-btn');
+      const resultEl=resultId?document.getElementById(resultId):null;
+      if(!form)return;
+      form.addEventListener('submit',async(e)=>{
+        e.preventDefault();
+        if(errEl)errEl.hidden=true;
+        if(resultEl){resultEl.hidden=true;resultEl.classList.remove('visible')}
+        const raw=input?.value?.trim()??'';
+        if(!raw){if(errEl){errEl.textContent='Please enter a URL.';errEl.hidden=false;}input?.focus();return;}
+        if(btn){btn.disabled=true;btn.textContent='Scanning…';btn.setAttribute('aria-busy','true')}
+        try{
+          const url=raw.startsWith('http')?raw:`https://${raw}`;
+          const res=await fetch(SCAN_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});
+          if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.error??'Scan failed')}
+          const data=await res.json();
+          if(resultEl)renderResult(data,resultEl);
+          else window.location.href=`https://legibly-production.up.railway.app?url=${encodeURIComponent(url)}`;
+        }catch(err){
+          if(errEl){errEl.textContent=err.message==='Failed to fetch'?'Could not reach the scan service. Please try again.':`Could not scan — ${esc(err.message)}`;errEl.hidden=false;}
+        }finally{
+          if(btn){btn.disabled=false;btn.textContent='Scan free';btn.setAttribute('aria-busy','false')}
         }
-        const data = await res.json();
-        renderResult(data);
-      } catch (err) {
-        errorEl.textContent = err.message === 'Failed to fetch'
-          ? 'Could not reach the scan service. Please try again.'
-          : `Could not scan. ${esc(err.message)}`;
-        errorEl.hidden = false;
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Scan free';
-        btn.setAttribute('aria-busy', 'false');
-      }
-    });
+      });
+    }
+
+    setupForm('scan-form','url-input','scan-error','scan-result');
+    setupForm('scan-form-2','url-input-2','scan-error-2',null);
   </script>
 </body>
 </html>
