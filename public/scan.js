@@ -96,9 +96,22 @@ function renderResult({ grade, score, blocker, signals, sitePages }) {
       </div>
 
       <div class="report-cta-row" id="report-cta-row">
-        <button class="btn-report" id="get-report-btn">
-          Get full report — prompts, fixes, llms.txt →
-        </button>
+        ${hasEmail() ? `
+          <button class="btn-report" id="get-report-btn">
+            Get full report — prompts, fixes, llms.txt →
+          </button>
+        ` : `
+          <div class="email-gate" id="email-gate">
+            <p class="email-gate-label">Enter your email to see your full report — prompts you're losing, copy-paste fixes, generated llms.txt</p>
+            <div class="email-gate-row">
+              <label for="gate-email" class="sr-only">Your email address</label>
+              <input type="email" id="gate-email" placeholder="you@company.com"
+                autocomplete="email" aria-required="true" />
+              <button class="btn-gate" id="gate-submit">See my report →</button>
+            </div>
+            <p id="gate-error" class="field-error" role="alert" aria-live="polite" hidden></p>
+          </div>
+        `}
       </div>
 
       <div class="full-report-panel" id="full-report-panel" hidden>
@@ -116,7 +129,15 @@ function renderResult({ grade, score, blocker, signals, sitePages }) {
   resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   document.getElementById('breakdown-btn').addEventListener('click', toggleBreakdown);
-  document.getElementById('get-report-btn').addEventListener('click', fetchFullReport);
+
+  if (hasEmail()) {
+    document.getElementById('get-report-btn')?.addEventListener('click', fetchFullReport);
+  } else {
+    document.getElementById('gate-submit')?.addEventListener('click', submitEmailGate);
+    document.getElementById('gate-email')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') submitEmailGate();
+    });
+  }
   resultSection.querySelectorAll('.info-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -544,6 +565,52 @@ function setLoading(loading) {
 
 function showError(msg) { urlError.textContent = msg; urlError.hidden = false; }
 function clearError() { urlError.textContent = ''; urlError.hidden = true; }
+
+// ── Email gate ────────────────────────────────────────────────────────────────
+
+function hasEmail() {
+  return !!localStorage.getItem('legibly_email');
+}
+
+async function submitEmailGate() {
+  const input = document.getElementById('gate-email');
+  const errEl = document.getElementById('gate-error');
+  const btn   = document.getElementById('gate-submit');
+  const email = input?.value?.trim() ?? '';
+
+  errEl.hidden = true;
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errEl.textContent = 'Please enter a valid email address.';
+    errEl.hidden = false;
+    input?.focus();
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Unlocking…';
+
+  try {
+    await fetch('/api/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, url: currentUrl, grade: currentScanData?.grade }),
+    });
+    // Store regardless of server response — never block on email delivery
+    localStorage.setItem('legibly_email', email);
+    // Re-render the CTA row with the report button
+    const ctaRow = document.getElementById('report-cta-row');
+    if (ctaRow) {
+      ctaRow.innerHTML = `<button class="btn-report" id="get-report-btn">Get full report — prompts, fixes, llms.txt →</button>`;
+      document.getElementById('get-report-btn').addEventListener('click', fetchFullReport);
+    }
+  } catch {
+    // Even on network error, unlock — email is a signal not a hard gate
+    localStorage.setItem('legibly_email', email);
+    btn.disabled = false;
+    btn.textContent = 'See my report →';
+  }
+}
 
 function safeOrigin(url) {
   try { return new URL(url).origin; } catch { return url; }

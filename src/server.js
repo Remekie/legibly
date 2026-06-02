@@ -71,6 +71,33 @@ app.post('/api/scan', scanLimiter, async (req, res) => {
   }
 });
 
+const emailLimiter = rateLimit({
+  windowMs: 60 * 1000, max: 5,
+  standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Too many requests. Please wait a minute.' },
+});
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// In-memory store — replace with DB when adding persistence
+const emailLeads = new Map(); // email → { url, grade, ts }
+
+app.post('/api/email', emailLimiter, (req, res) => {
+  const { email, url, grade } = req.body ?? {};
+
+  if (!email || typeof email !== 'string' || !EMAIL_RE.test(email)) {
+    return res.status(400).json({ error: 'Valid email required' });
+  }
+
+  emailLeads.set(email.toLowerCase().trim(), {
+    url: url ?? '',
+    grade: grade ?? '',
+    ts: new Date().toISOString(),
+  });
+
+  process.stderr.write(`[lead] ${email} scanned ${url} (${grade})\n`);
+  res.json({ ok: true });
+});
+
 app.post('/api/report', reportLimiter, async (req, res) => {
   let url;
   try {

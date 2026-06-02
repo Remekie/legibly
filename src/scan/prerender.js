@@ -1,5 +1,6 @@
 import puppeteer from 'puppeteer';
 import { calculateVisibility } from './visibility.js';
+import { extractAgentView } from '../report/agent-view.js';
 
 const SPA_PATTERN = /<div[^>]+id=["']root["'][^>]*>\s*<\/div>/i;
 const TIMEOUT_MS = 15_000;
@@ -55,12 +56,17 @@ export async function checkPrerender(url) {
     const BOT_WALL = /checking your browser|enable javascript and cookies|cloudflare ray id|access denied|just a moment\.\.\./i;
     const isBotWall = BOT_WALL.test(botHtml);
 
+    const agentView = (!isSpaOnly && !isBotWall)
+      ? extractAgentView(botHtml, humanHtml)
+      : null;
+
     return {
       score: isSpaOnly ? 0 : 10,
       isSpaOnly,
       isBlocked: false,
       statusCode,
-      botHtml: (isSpaOnly || isBotWall) ? null : botHtml, // expose for fallback in other signals
+      agentView,
+      botHtml: (isSpaOnly || isBotWall) ? null : botHtml,
       ...visibility,
       detail: isSpaOnly
         ? "AI can't read your site. The way it's built makes it invisible to ChatGPT, Claude, and Perplexity."
