@@ -566,8 +566,8 @@
     <section class="hero" aria-labelledby="hero-heading">
       <div class="container">
         <span class="hero-label">AI Visibility Diagnostic</span>
-        <h1 id="hero-heading">Can AI crawlers actually read your site?</h1>
-        <p class="hero-sub">GPTBot doesn't execute JavaScript — if your site runs on React, Lovable, or Vite, AI sees an empty page.</p>
+        <h1 id="hero-heading">Why doesn't your business show up when someone asks ChatGPT?</h1>
+        <p class="hero-sub">Your customers are asking AI for recommendations. If your site isn't set up correctly, AI can't read it — and recommends your competitors instead. Paste your URL and find out in 30 seconds.</p>
 
         <form id="scan-form" class="scan-form" novalidate aria-label="Free AI visibility scan">
           <div class="scan-input-wrap">
@@ -587,7 +587,7 @@
             Scan free
           </button>
         </form>
-        <p id="scan-hint" class="scan-note">Free. No account. Grade in 30 seconds.</p>
+        <p id="scan-hint" class="scan-note">Free. No account. No credit card.</p>
         <p id="scan-error" class="scan-error" role="alert" aria-live="polite" hidden></p>
 
         <div id="scan-result" class="scan-result" hidden aria-live="polite" aria-atomic="true"></div>
@@ -597,9 +597,9 @@
     <!-- ── Proof ─────────────────────────────────────────────────────────────── -->
     <section aria-labelledby="proof-heading">
       <div class="container">
-        <span class="hero-label" aria-hidden="true">Example scan · Lovable-built SaaS</span>
-        <h2 id="proof-heading">This is what Legibly found on a Lovable-built SaaS site.</h2>
-        <p>0% of this site's content is readable by AI. The whole page is a React shell — <code style="font-family:var(--font-mono);font-size:0.875em;background:var(--surface);padding:0.1em 0.3em;border-radius:2px">&lt;div id="root"&gt;&lt;/div&gt;</code> — with nothing inside it. ChatGPT has never read a single word this founder wrote.</p>
+        <span class="hero-label" aria-hidden="true">Example scan · Real findings</span>
+        <h2 id="proof-heading">This is what Legibly found on a new SaaS site.</h2>
+        <p>AI crawlers don't browse websites the way people do — they read the page's raw code. This site was built with a popular no-code tool that creates interactive apps. When an AI crawler visited it, the page was empty. Not the product description. Not the pricing. Not the company name. Nothing. ChatGPT has never read a single word the founder wrote.</p>
 
         <div class="proof-grade-badge">
           <span class="proof-grade-letter" aria-label="Grade F" style="color:var(--fail)">F</span>
@@ -613,7 +613,7 @@
               <span class="signal-icon signal-icon--fail" aria-hidden="true">✗</span>
               <div>
                 <div class="signal-name">AI crawler rendering</div>
-                <div class="signal-detail">AI can't read this site. It's built with React — GPTBot receives an empty shell. Every word, price, and feature description is invisible to AI.</div>
+                <div class="signal-detail">AI can't read this site. It's built with an app framework that requires a browser to run — AI crawlers don't do that. Every word, price, and feature is invisible.</div>
               </div>
             </div>
             <div role="row" class="proof-row">
@@ -627,28 +627,28 @@
               <span class="signal-icon signal-icon--fail" aria-hidden="true">✗</span>
               <div>
                 <div class="signal-name">Structured data</div>
-                <div class="signal-detail">No schema found. AI is guessing what this product is and what it does.</div>
+                <div class="signal-detail">No structured information found. AI is guessing what this business does — and usually guesses wrong or skips it entirely.</div>
               </div>
             </div>
             <div role="row" class="proof-row">
               <span class="signal-icon signal-icon--fail" aria-hidden="true">✗</span>
               <div>
                 <div class="signal-name">llms.txt file</div>
-                <div class="signal-detail">No llms.txt. AI engines have no plain-language guide to this site.</div>
+                <div class="signal-detail">No AI guide file found. There's a simple text file you can add that tells AI exactly what your business does — it's missing.</div>
               </div>
             </div>
             <div role="row" class="proof-row">
               <span class="signal-icon signal-icon--fail" aria-hidden="true">✗</span>
               <div>
                 <div class="signal-name">Answer-first content</div>
-                <div class="signal-detail">React shell — no readable content at all, let alone an answer-first value statement.</div>
+                <div class="signal-detail">No readable content — so there's nothing for AI to quote or recommend. Most sites fail this when their content can't be read without running a browser.</div>
               </div>
             </div>
             <div role="row" class="proof-row">
               <span class="signal-icon signal-icon--fail" aria-hidden="true">✗</span>
               <div>
                 <div class="signal-name">Brand trust signals</div>
-                <div class="signal-detail">No Organization schema, no sameAs social links. AI has no way to verify this product exists.</div>
+                <div class="signal-detail">AI has no way to verify this business is real. No company information, no links to social profiles — nothing to cross-reference.</div>
               </div>
             </div>
             <div role="row" class="proof-row">
@@ -663,6 +663,15 @@
       </div>
     </section>
 
+    <!-- ── Lovable callout ──────────────────────────────────────────────────── -->
+    <section aria-labelledby="lovable-heading" style="background:oklch(97% 0.06 108);">
+      <div class="container">
+        <span class="hero-label" style="color:oklch(55% 0.15 108)">Built with Lovable, Bolt, or v0?</span>
+        <h2 id="lovable-heading" style="font-size:clamp(1.25rem,3vw,1.75rem)">This is exactly why your site doesn't show up.</h2>
+        <p>These tools build React apps — which look great in a browser but are invisible to AI. When ChatGPT tries to read your site, it sees an empty page. This is the single most common reason Lovable-built products get zero AI search traffic, and Legibly fixes it automatically.</p>
+      </div>
+    </section>
+
     <!-- ── Differentiators ───────────────────────────────────────────────────── -->
     <section aria-labelledby="diff-heading">
       <div class="container">
@@ -673,22 +682,22 @@
           <li class="diff-item">
             <span class="diff-num" aria-hidden="true">01</span>
             <div>
-              <div class="diff-title">Content visibility %</div>
-              <p class="diff-body">We fetch your page the way GPTBot does — no JavaScript, raw HTML only — and measure the gap against what a human sees. This is an actual word count, not a confidence score.</p>
+              <div class="diff-title">What AI actually reads on your page</div>
+              <p class="diff-body">We visit your site the way an AI crawler does — without running any interactive code — and count exactly how many words it can read. Most tools give you a score. We show you the actual words that are missing.</p>
             </div>
           </li>
           <li class="diff-item">
             <span class="diff-num" aria-hidden="true">02</span>
             <div>
-              <div class="diff-title">Who's appearing instead of you</div>
-              <p class="diff-body">We run your top customer prompts through Perplexity and identify which competitors are cited instead of you. You see the exact prompts, ranked by how often they're losing you customers.</p>
+              <div class="diff-title">Which competitors AI recommends instead of you</div>
+              <p class="diff-body">We run the questions your customers are actually asking AI — and check whether your business comes up. If it doesn't, you see exactly which competitors are being recommended in your place.</p>
             </div>
           </li>
           <li class="diff-item">
             <span class="diff-num" aria-hidden="true">03</span>
             <div>
-              <div class="diff-title">1-click GitHub fix</div>
-              <p class="diff-body">We detect your stack — Lovable, Vite, Next.js, or static — and open a PR with every fix applied. You merge it. No developer, no config files, no manual work.</p>
+              <div class="diff-title">We send your site the fixes — you approve them</div>
+              <p class="diff-body">Connect your site's code repository and we prepare every fix automatically. Your developer gets a ready-to-approve change with everything applied. One click to confirm. If you built with Lovable, Bolt, or v0, you can do this yourself.</p>
             </div>
           </li>
         </ol>
@@ -699,29 +708,29 @@
     <section aria-labelledby="fix-heading" style="background: var(--surface);">
       <div class="container">
         <span class="hero-label" aria-hidden="true">How the fix works</span>
-        <h2 id="fix-heading">One PR. Every fix. Grade confirmed.</h2>
+        <h2 id="fix-heading">We send the fixes. You approve. Grade confirmed.</h2>
 
         <ol class="fix-steps" aria-label="How Legibly fixes your site">
           <li class="fix-step">
             <span class="fix-step-num" aria-hidden="true">1</span>
             <div>
-              <div class="fix-step-title">We scan as GPTBot does.</div>
-              <p class="fix-step-body">JavaScript disabled. Raw HTML only. We measure exactly what AI receives versus what your customers see.</p>
+              <div class="fix-step-title">We visit your site the way AI does.</div>
+              <p class="fix-step-body">No browser, no interactive code — just the raw content. We measure exactly what AI receives versus what your customers see.</p>
             </div>
           </li>
           <li class="fix-step">
             <span class="fix-step-num" aria-hidden="true">2</span>
             <div>
-              <div class="fix-step-title">We write the PR.</div>
-              <p class="fix-step-body">vite-ssg pre-renders your React app. llms.txt tells Claude what your site covers. Organization schema tells GPTBot your business name, URL, and what you offer.</p>
-              <div class="fix-step-code" aria-label="Example PR title">PR: "Fix AI visibility — grade F → B (Legibly)"</div>
+              <div class="fix-step-title">We prepare every fix and send it to your site.</div>
+              <p class="fix-step-body">We make your content readable by AI, add a plain-language guide for AI crawlers, and add structured information about your business — all in one ready-to-approve change.</p>
+              <div class="fix-step-code" aria-label="Example change description">Change: "Fix AI visibility — grade F → B (Legibly)"</div>
             </div>
           </li>
           <li class="fix-step">
             <span class="fix-step-num" aria-hidden="true">3</span>
             <div>
-              <div class="fix-step-title">You merge. Grade improves.</div>
-              <p class="fix-step-body">Merge the PR, wait for your build to deploy, then scan again. The before/after grade is the proof.</p>
+              <div class="fix-step-title">You approve it. Your grade improves.</div>
+              <p class="fix-step-body">Click approve, wait for your site to update, then scan again. The before/after grade is the proof — and it's the screenshot people share.</p>
             </div>
           </li>
         </ol>
