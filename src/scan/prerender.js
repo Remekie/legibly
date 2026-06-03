@@ -66,7 +66,8 @@ export async function checkPrerender(url) {
       isBlocked: false,
       statusCode,
       agentView,
-      botHtml: (isSpaOnly || isBotWall) ? null : botHtml,
+      botHtml:   (isSpaOnly || isBotWall) ? null : botHtml,
+      humanHtml: humanHtml ?? null,
       ...visibility,
       detail: isSpaOnly
         ? "AI can't read your site. The way it's built makes it invisible to ChatGPT, Claude, and Perplexity."

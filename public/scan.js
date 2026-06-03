@@ -328,49 +328,12 @@ async function fetchFullReport() {
     }
     const data = await res.json();
 
-    loading.style.display = 'none';
-    btn.textContent = 'Report generated ✓';
-    content.innerHTML = renderFullReport(data);
-
-    // Add PDF download button
-    const pdfRow = document.createElement('div');
-    pdfRow.className = 'report-cta-row';
-    pdfRow.innerHTML = `<button class="btn-pdf" id="pdf-btn">⬇ Download PDF Report</button>`;
-    content.prepend(pdfRow);
-    document.getElementById('pdf-btn').addEventListener('click', () => downloadPDF());
-
-    content.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-    document.getElementById('deploy-btn')?.addEventListener('click', deployFixes);
-
-    // Wire copy buttons
-    content.querySelectorAll('.copy-btn').forEach(b => {
-      b.addEventListener('click', () => {
-        const target = document.getElementById(b.dataset.target);
-        if (!target) return;
-        navigator.clipboard.writeText(target.textContent).then(() => {
-          b.textContent = 'Copied ✓';
-          setTimeout(() => b.textContent = 'Copy', 2000);
-        });
-      });
-    });
-
-    // Wire download buttons
-    content.querySelectorAll('.download-btn').forEach(b => {
-      b.addEventListener('click', () => {
-        const target = document.getElementById(b.dataset.target);
-        if (!target) return;
-        const blob = new Blob([target.textContent], { type: 'text/plain' });
-        const a = document.createElement('a');
-        const objUrl = URL.createObjectURL(blob);
-        a.href = objUrl;
-        a.download = b.dataset.filename ?? 'download.txt';
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(objUrl), 60_000);
-      });
-    });
+    // Store in sessionStorage and navigate to dashboard
+    sessionStorage.setItem('legibly_report', JSON.stringify(data));
+    window.location.href = '/report.html';
 
   } catch (err) {
+    clearInterval(dotInterval);
     loading.style.display = 'none';
     content.innerHTML = `<p class="report-error">Report generation failed: ${escapeHtml(err.message)}</p>`;
     btn.disabled = false;
@@ -380,6 +343,10 @@ async function fetchFullReport() {
   }
 }
 
+// renderFullReport and helpers (renderDeploySection, renderFixSection) moved to report.html
+// downloadPDF also moved to report.html
+
+/* REMOVED — keeping marker so git diff is clear
 function renderFullReport(data) {
   const { report, signals } = data;
   if (!report) return '<p class="report-error">No report data returned.</p>';
@@ -598,6 +565,7 @@ function renderFixSection(fix) {
     </div>
   `;
 }
+END REMOVED */
 
 function toggleBreakdown() {
   const btn = document.getElementById('breakdown-btn');
@@ -671,31 +639,7 @@ function renderBreakdownRow(key, signal) {
   </div>`;
 }
 
-async function downloadPDF() {
-  const btn = document.getElementById('pdf-btn');
-  btn.disabled = true;
-  btn.textContent = 'Generating PDF…';
-  try {
-    const res = await fetch('/api/report/pdf', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: currentUrl }),
-    });
-    if (!res.ok) throw new Error('PDF generation failed');
-    const blob = await res.blob();
-    const a = document.createElement('a');
-    const objUrl = URL.createObjectURL(blob);
-    a.href = objUrl;
-    a.download = `legibly-report-${safeOrigin(currentUrl).replace('https://','').replace('http://','')}.pdf`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(objUrl), 60_000);
-    btn.textContent = '⬇ Download PDF Report';
-  } catch {
-    btn.textContent = 'PDF failed — try again';
-  } finally {
-    btn.disabled = false;
-  }
-}
+// downloadPDF moved to report.html
 
 function closeAllTooltips() {
   document.querySelectorAll('.tooltip').forEach(t => t.remove());

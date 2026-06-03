@@ -47,7 +47,8 @@ export async function generateReport(url) {
       llmstxt:    llmstxt.status     === 'fulfilled' ? llmstxt.value     : null,
       citations:  citations.status   === 'fulfilled' ? citations.value   : null,
       fixes,
-      agentView:  scanResult.signals.prerender?.agentView ?? null,
+      agentView:  scanResult.signals.prerender?.agentView  ?? null,
+      humanHtml:  scanResult.signals.prerender?.humanHtml  ?? null,
     },
   };
 }
