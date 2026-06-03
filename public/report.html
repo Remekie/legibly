@@ -26,12 +26,12 @@
   </nav>
 
   <main>
-    <div id="pane-overview" class="dash-pane active" role="tabpanel"></div>
-    <div id="pane-ai-view"  class="dash-pane"        role="tabpanel"></div>
-    <div id="pane-prompts"  class="dash-pane"        role="tabpanel"></div>
-    <div id="pane-fixes"    class="dash-pane"        role="tabpanel"></div>
-    <div id="pane-deploy"   class="dash-pane"        role="tabpanel"></div>
-    <div id="pane-empty"    class="dash-pane active" role="tabpanel" style="text-align:center;padding:4rem 1.5rem">
+    <div id="pane-overview" class="dash-pane" role="tabpanel"></div>
+    <div id="pane-ai-view"  class="dash-pane" role="tabpanel"></div>
+    <div id="pane-prompts"  class="dash-pane" role="tabpanel"></div>
+    <div id="pane-fixes"    class="dash-pane" role="tabpanel"></div>
+    <div id="pane-deploy"   class="dash-pane" role="tabpanel"></div>
+    <div id="pane-empty"    class="dash-pane" role="tabpanel" style="text-align:center;padding:4rem 1.5rem">
       <p style="color:var(--color-muted);margin-bottom:1rem">No report found. Run a scan first.</p>
       <a href="/" style="color:var(--color-text);font-weight:600">Go to scanner →</a>
     </div>
@@ -452,18 +452,17 @@ async function deployFixes(scanUrl) {
 // ── Boot ──────────────────────────────────────────────────────────────────────
 (function init() {
   const raw = sessionStorage.getItem('legibly_report');
-  if (!raw) {
-    // No data — show empty state, hide tabs
+
+  function showEmpty() {
     document.querySelector('.dash-tabs').style.display = 'none';
     document.getElementById('pane-empty').classList.add('active');
-    return;
   }
 
+  if (!raw) { showEmpty(); return; }
+
   let data;
-  try { data = JSON.parse(raw); } catch {
-    document.getElementById('pane-empty').classList.add('active');
-    return;
-  }
+  try { data = JSON.parse(raw); } catch { showEmpty(); return; }
+  if (!data || typeof data !== 'object') { showEmpty(); return; }
 
   // Set domain in header
   const domain = data.context?.domain ?? safeOrigin(data.url ?? '').replace(/https?:\/\//,'');
@@ -476,12 +475,27 @@ async function deployFixes(scanUrl) {
     if (el) el.textContent = safeOrigin(data.url ?? '');
   }, 50);
 
-  // Render all tabs
-  document.getElementById('pane-overview').innerHTML = renderOverview(data);
-  document.getElementById('pane-ai-view').innerHTML  = renderAiView(data);
-  document.getElementById('pane-prompts').innerHTML  = renderPrompts(data);
-  document.getElementById('pane-fixes').innerHTML    = renderFixes(data);
-  document.getElementById('pane-deploy').innerHTML   = renderDeploy(data);
+  // Render all tabs — catch errors per-pane so one failure doesn't blank the whole dashboard
+  const renders = [
+    ['pane-overview', () => renderOverview(data)],
+    ['pane-ai-view',  () => renderAiView(data)],
+    ['pane-prompts',  () => renderPrompts(data)],
+    ['pane-fixes',    () => renderFixes(data)],
+    ['pane-deploy',   () => renderDeploy(data)],
+  ];
+  renders.forEach(([id, fn]) => {
+    try {
+      document.getElementById(id).innerHTML = fn();
+    } catch(e) {
+      document.getElementById(id).innerHTML = `<p style="color:var(--color-fail);padding:2rem 0">Error rendering this section. Check the browser console.</p>`;
+      console.error('Report render error in', id, e);
+    }
+  });
+
+  // Activate overview tab
+  document.getElementById('pane-overview').classList.add('active');
+  document.querySelector('.dash-tab[data-tab="overview"]').classList.add('active');
+  document.querySelector('.dash-tab[data-tab="overview"]').setAttribute('aria-selected', 'true');
 
   // Wire PDF button
   document.getElementById('pdf-btn')?.addEventListener('click', () => downloadPDF(data.url ?? ''));
