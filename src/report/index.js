@@ -5,8 +5,9 @@ import { generateSchemaRecs } from './schema-recs.js';
 import { generateLlmstxt } from './llmstxt-gen.js';
 import { generateFixes } from './fixes.js';
 import { checkCitations } from './citations.js';
+import { generateLovableSnippets } from './lovable-snippets.js';
 
-export async function generateReport(url) {
+export async function generateReport(url, brandContext = null) {
   const [scanResult, context] = await Promise.all([
     scan(url),
     extractContext(url).catch(() => null),
@@ -16,39 +17,52 @@ export async function generateReport(url) {
     return { ...scanResult, report: null, error: 'Could not fetch page content for report.' };
   }
 
+  // Merge brand description from user settings into context for richer prompts
+  const enrichedContext = brandContext
+    ? { ...context, brandDescription: brandContext.description, brandName: brandContext.name }
+    : context;
+
   const existingSchemaTypes = scanResult.signals.schema?.types ?? [];
 
-  // Generate prompts first — citations depend on them
   const promptsResult = await (
     process.env.ANTHROPIC_API_KEY
-      ? generatePrompts(context).catch(() => null)
+      ? generatePrompts(enrichedContext).catch(() => null)
       : Promise.resolve(null)
   );
 
-  // Run remaining sections + citations in parallel
   const [schemaRecs, llmstxt, citations] = await Promise.allSettled([
-    Promise.resolve(generateSchemaRecs(context, existingSchemaTypes)),
+    Promise.resolve(generateSchemaRecs(enrichedContext, existingSchemaTypes)),
     generateLlmstxt(url),
     checkCitations(context.domain, promptsResult),
   ]);
 
-  const fixes = generateFixes(scanResult.signals, context, scanResult.sitePages);
+  const fixes = generateFixes(scanResult.signals, enrichedContext, scanResult.sitePages);
+  const schemaRecsValue = schemaRecs.status === 'fulfilled' ? schemaRecs.value : null;
+  const llmstxtValue    = llmstxt.status    === 'fulfilled' ? llmstxt.value    : null;
+
+  const lovableSnippets = generateLovableSnippets({
+    signals:    scanResult.signals,
+    schemaRecs: schemaRecsValue,
+    llmstxt:    llmstxtValue,
+    domain:     context.domain,
+  });
 
   return {
     ...scanResult,
     context: {
-      title: context.title,
+      title:       context.title,
       description: context.description,
-      domain: context.domain,
+      domain:      context.domain,
     },
     report: {
-      prompts:    promptsResult,
-      schemaRecs: schemaRecs.status  === 'fulfilled' ? schemaRecs.value  : null,
-      llmstxt:    llmstxt.status     === 'fulfilled' ? llmstxt.value     : null,
-      citations:  citations.status   === 'fulfilled' ? citations.value   : null,
+      prompts:         promptsResult,
+      schemaRecs:      schemaRecsValue,
+      llmstxt:         llmstxtValue,
+      citations:       citations.status === 'fulfilled' ? citations.value : null,
       fixes,
-      agentView:  scanResult.signals.prerender?.agentView  ?? null,
-      humanHtml:  scanResult.signals.prerender?.humanHtml  ?? null,
+      lovableSnippets,
+      agentView:       scanResult.signals.prerender?.agentView ?? null,
+      humanHtml:       scanResult.signals.prerender?.humanHtml ?? null,
     },
   };
 }

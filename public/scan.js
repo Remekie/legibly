@@ -15,7 +15,8 @@ function hasGitHub() {
 
   // TESTING: ?test_paid=1 bypasses Stripe and forces paid state
   if (params.get('test_paid') === '1') {
-    localStorage.setItem('legibly_paid', 'test-mode');
+    const tier = params.get('tier') ?? 'report';
+    localStorage.setItem('legibly_paid', JSON.stringify({ tier, ts: Date.now() }));
     const testUrl = params.get('url') ?? '';
     if (testUrl && urlInput) urlInput.value = testUrl;
     window.history.replaceState({}, '', '/');
@@ -53,23 +54,34 @@ function hasGitHub() {
 })();
 
 const SIGNAL_LABELS = {
-  prerender: 'AI crawler rendering',
-  robots:    'Crawler access',
-  schema:    'Structured data',
-  llmstxt:   'llms.txt file',
-  content:   'Answer-first content',
-  eeat:      'Brand trust signals',
-  metadata:  'Page metadata',
+  prerender: 'AI can read your site',
+  robots:    'Search rules are set',
+  schema:    'AI knows what you sell',
+  llmstxt:   'AI summary is in place',
+  content:   'Content answers questions',
+  eeat:      'Business credibility signals',
+  metadata:  'Pages are described clearly',
+};
+
+// Failing-state labels (shown when a signal fails)
+const SIGNAL_LABELS_FAIL = {
+  prerender: "AI can't read your site",
+  robots:    'Search rules are missing',
+  schema:    "AI doesn't know what you sell",
+  llmstxt:   'AI summary is missing',
+  content:   "Content doesn't answer questions",
+  eeat:      'Business credibility is missing',
+  metadata:  "Pages aren't described clearly",
 };
 
 const SIGNAL_TOOLTIPS = {
-  prerender: 'AI crawlers like GPTBot and ClaudeBot cannot run JavaScript. If your site depends on JS to show content, AI sees a blank page.',
-  robots:    "A robots.txt file tells crawlers what they can and can't access. AI crawlers obey these rules — if they're blocked here, your site doesn't exist to them.",
-  schema:    'Structured data is hidden code that tells AI exactly what your business is, what you offer, and where you\'re located — in a format AI can reliably read.',
-  llmstxt:   'A simple text file at yoursite.com/llms.txt that tells AI models a plain-language summary of who you are and what you do.',
-  content:   'AI citation engines favor pages that answer questions directly in the first few sentences — not pages that bury the answer after a long intro.',
-  eeat:      'Experience, Expertise, Authoritativeness, Trustworthiness — the signals AI engines use to decide whether your business is credible enough to recommend.',
-  metadata:  'Page title, meta description, social share tags, heading structure (H1/H2), canonical tag, and image alt text. These are the first signals AI engines use to understand what your page is about.',
+  prerender: 'AI crawlers like GPTBot and ClaudeBot can\'t run JavaScript. If your site is built with React or another JS framework, AI sees a blank page — not your products, prices, or content.',
+  robots:    'robots.txt tells crawlers what they can access. AI crawlers obey these rules — if they\'re blocked here, your site doesn\'t exist to ChatGPT, Perplexity, or Claude.',
+  schema:    'JSON-LD structured data is hidden code that tells AI exactly what your business is, what you sell, and where you\'re located — in a format AI can reliably read and cite.',
+  llmstxt:   '/llms.txt isn\'t there — without it, AI assistants have to read every page on your site to figure out what it\'s about. A plain-text summary makes it easy.',
+  content:   'AI citation engines favor pages that answer questions in the first sentence — not pages that bury the answer after a long intro. Direct answers get cited.',
+  eeat:      'ChatGPT and Perplexity check for proof your business is real: an About page, visible team members, a real contact method, and author credentials.',
+  metadata:  'Page title, meta description, H1/H2 headings, and image alt text — the first things AI engines read to understand what your page is about.',
 };
 
 const INTENT_LABELS = {
@@ -112,38 +124,172 @@ form.addEventListener('submit', async (e) => {
   }
 });
 
-function renderLockedAnalysis(visibilityPct, hasSitePages) {
-  const items = [];
-  if (visibilityPct !== null) {
-    items.push({ label: 'Content visibility', desc: 'What percentage of your page words AI crawlers can actually read' });
-  }
-  if (hasSitePages) {
-    items.push({ label: 'Site-wide check — 10 pages', desc: 'Structured data, page titles, meta descriptions, headings across all pages' });
-  }
-  items.push({ label: 'Prompts you should be winning', desc: '12+ specific queries where competitors appear instead of you' });
-  items.push({ label: 'Who is appearing instead of you', desc: 'Competitors ranked by AI mention frequency across your keywords' });
+function buildLlmstxtPreview(url, scanData) {
+  const domain    = (() => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } })();
+  const pageTitle = scanData?.signals?.metadata?.pageTitle ?? scanData?.pageTitle ?? domain;
+  const lines = [
+    `# ${domain}`,
+    `> ${pageTitle}`,
+    ``,
+    `## About`,
+    `${pageTitle} — [unlock to see AI-readable description]`,
+    ``,
+    `## Pages`,
+    `- /: ${pageTitle}`,
+    `- /about, /contact, /services…`,
+    ``,
+    `## Contact`,
+    `- Site: https://${domain}`,
+  ];
+  // Show first 3 lines clearly, blur the rest
+  const visible = lines.slice(0, 3).map(l => escapeHtml(l)).join('\n');
+  const blurred = lines.slice(3).map(l => escapeHtml(l)).join('\n');
+  return { visible, blurred, domain };
+}
+
+function buildPromptTeasers(scanData) {
+  const hostname = (() => { try { return new URL(currentUrl).hostname.replace(/^www\./, ''); } catch { return currentUrl; } })();
+  const title = scanData?.pageTitle ?? scanData?.signals?.metadata?.pageTitle ?? null;
+  // Use page title to personalize, fall back to hostname
+  const topic = title && title.length < 60 ? title : hostname;
+  return [
+    `"What are the best ${escapeHtml(hostname)} alternatives?"`,
+    `"Who provides services like ${escapeHtml(hostname)}?"`,
+    `"Is ${escapeHtml(hostname)} the best option for [your service]?"`,
+  ];
+}
+
+function renderLockedAnalysis(visibilityPct, hasSitePages, scanData) {
+  const prompts = buildPromptTeasers(scanData);
+  const hostname = (() => { try { return new URL(currentUrl).hostname.replace(/^www\./, ''); } catch { return ''; } })();
 
   return `
-    <div class="locked-section" aria-label="Full analysis — paid">
-      <div class="locked-section-title">Full analysis</div>
-      <ul class="locked-items">
-        ${items.map(({ label, desc }) => `
-          <li class="locked-item">
-            <span class="locked-badge">Paid</span>
-            <span><strong>${escapeHtml(label)}</strong> — ${escapeHtml(desc)}</span>
-          </li>`).join('')}
-      </ul>
-      <div class="locked-unlock-row">
-        <span>Get the complete diagnostic with copy-paste fixes</span>
-        <button class="btn-primary locked-unlock-btn" style="font-size:.8125rem;padding:.625rem 1.25rem">
-          See full report — $79
-        </button>
+    <div class="locked-section" aria-label="Upgrade to unlock">
+
+      <div class="locked-section-title">Who's winning when AI answers these questions?</div>
+
+      <div class="prompt-teaser-list" id="prompt-teaser-list">
+        ${prompts.map(p => `<div class="prompt-teaser-row"><span class="prompt-teaser-q">${p}</span><span class="prompt-teaser-lock">locked</span></div>`).join('')}
+        <div class="prompt-teaser-more">+ 9 more prompts in the full report</div>
       </div>
+
+      <div class="competitor-teaser" id="competitor-teaser">
+        <div class="competitor-teaser-label">Sites appearing instead of <strong>${escapeHtml(hostname)}</strong>:</div>
+        <div class="competitor-teaser-loading" id="competitor-teaser-loading">
+          <span class="teaser-spinner"></span> Finding who's ranking instead of you…
+        </div>
+        <div class="competitor-teaser-names" id="competitor-teaser-names" hidden></div>
+      </div>
+
+      <div class="llmstxt-preview-section">
+        <div class="llmstxt-preview-label">Your llms.txt file — what AI models need to understand your site:</div>
+        <div class="llmstxt-preview-code" id="llmstxt-preview-code"></div>
+        <div class="llmstxt-preview-gate">
+          <input type="email" id="llmstxt-email" placeholder="you@company.com" autocomplete="email" class="llmstxt-email-input">
+          <button class="btn-llmstxt-download" id="llmstxt-download-btn">Download my llms.txt →</button>
+        </div>
+        <p class="llmstxt-preview-hint" id="llmstxt-hint"></p>
+      </div>
+
+      <div class="locked-dual-cta">
+        <div class="locked-cta-item">
+          <div class="locked-cta-price">$29</div>
+          <div class="locked-cta-desc">AI View + 3 prompts + Perplexity citations</div>
+          <button class="btn-snapshot locked-snapshot-btn">
+            See who's winning — $29 →
+          </button>
+        </div>
+        <div class="locked-cta-divider">or</div>
+        <div class="locked-cta-item">
+          <div class="locked-cta-price">$79</div>
+          <div class="locked-cta-desc">Full report: 12 prompts, all fixes, llms.txt</div>
+          <button class="btn-primary locked-unlock-btn" style="font-size:.8125rem;padding:.625rem 1.25rem">
+            Full report with fixes — $79 →
+          </button>
+        </div>
+      </div>
+
     </div>
   `;
 }
 
-function renderResult({ grade, score, blocker, signals, sitePages }) {
+function renderLlmstxtPreview(scanData) {
+  const codeEl = document.getElementById('llmstxt-preview-code');
+  if (!codeEl) return;
+  const { visible, blurred } = buildLlmstxtPreview(currentUrl, scanData);
+  codeEl.innerHTML = `<span class="llmstxt-visible">${visible}</span><span class="llmstxt-blurred">${blurred}</span>`;
+
+  const btn  = document.getElementById('llmstxt-download-btn');
+  const hint = document.getElementById('llmstxt-hint');
+  btn?.addEventListener('click', async () => {
+    const email = document.getElementById('llmstxt-email')?.value?.trim() ?? '';
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !EMAIL_RE.test(email)) {
+      if (hint) { hint.textContent = 'Please enter a valid email address.'; hint.style.color = 'var(--color-fail)'; }
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    try {
+      await fetch('/api/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, url: currentUrl, grade: currentScanData?.grade }),
+      });
+      localStorage.setItem('legibly_email', email);
+      if (hint) { hint.textContent = `llms.txt will be emailed to ${email} — usually within 60 seconds.`; hint.style.color = 'var(--color-pass)'; }
+      btn.textContent = 'Sent ✓';
+    } catch {
+      btn.disabled = false;
+      btn.textContent = 'Download my llms.txt →';
+    }
+  });
+}
+
+async function loadCompetitorTeaser() {
+  const heroEl = document.getElementById('competitor-hero');
+  // Also update the locked section teaser if it exists
+  const teaserLoadingEl = document.getElementById('competitor-teaser-loading');
+  const teaserNamesEl   = document.getElementById('competitor-teaser-names');
+
+  try {
+    const res = await fetch(`/api/competitors-preview?url=${encodeURIComponent(currentUrl)}`);
+    if (!res.ok) throw new Error();
+    const { competitors } = await res.json();
+
+    // Update hero (above signal list)
+    if (heroEl) {
+      if (competitors?.length) {
+        const hostname = (() => { try { return new URL(currentUrl).hostname.replace(/^www\./,''); } catch { return ''; } })();
+        heroEl.innerHTML = `
+          <span class="competitor-hero-label">Appearing instead of <strong>${escapeHtml(hostname)}</strong>:</span>
+          ${competitors.map(d => `<span class="competitor-hero-domain">${escapeHtml(d)}</span>`).join('')}
+        `;
+      } else {
+        heroEl.innerHTML = '';
+      }
+    }
+
+    // Update locked section teaser (below signal list)
+    if (teaserLoadingEl) teaserLoadingEl.hidden = true;
+    if (teaserNamesEl) {
+      if (competitors?.length) {
+        teaserNamesEl.innerHTML = competitors.map(d =>
+          `<span class="competitor-teaser-domain">${escapeHtml(d)}</span>`
+        ).join('');
+        teaserNamesEl.removeAttribute('hidden');
+      } else {
+        teaserNamesEl.removeAttribute('hidden');
+      }
+    }
+  } catch {
+    if (heroEl) heroEl.innerHTML = '';
+    if (teaserLoadingEl) teaserLoadingEl.hidden = true;
+  }
+}
+
+function renderResult(data) {
+  const { grade, score, blocker, signals, sitePages } = data;
   const safeGrade = escapeHtml(String(grade ?? '?'));
   const safeScore = escapeHtml(String(score ?? 0));
   const gradeClass = `grade-${safeGrade.toLowerCase().replace(/[^a-f]/g, 'f')}`;
@@ -153,13 +299,32 @@ function renderResult({ grade, score, blocker, signals, sitePages }) {
 
   const paid = hasPaid();
   const hasSitePages = sitePages?.pagesChecked > 1;
+  const hostname = (() => { try { return new URL(currentUrl).hostname; } catch { return currentUrl; } })();
+
+  const shareTweet = encodeURIComponent(`My site ${hostname} scored ${grade} on AI visibility. Find out if yours is invisible to ChatGPT and Perplexity → https://legibly.dev`);
+  const shareLinkedIn = encodeURIComponent(`My site scored grade ${grade} on AI visibility — meaning AI search engines may not be recommending it. Legibly scans for the exact issues. Free scan: https://legibly.dev`);
 
   resultSection.innerHTML = `
     <div class="result-card ${gradeClass}">
 
       <div class="grade-display" aria-label="Grade ${safeGrade}">${safeGrade}</div>
       <div class="score-label">AI Visibility Score: ${safeScore}/100</div>
+      ${visibilityPct !== null
+        ? `<div class="visibility-headline" aria-live="polite">
+             AI sees <strong>${visibilityPct}%</strong> of your site
+             ${vis?.botWordCount != null && vis?.humanWordCount != null && vis.humanWordCount > vis.botWordCount
+               ? `<span class="visibility-hidden-count">(${escapeHtml(String(vis.humanWordCount - vis.botWordCount))} words hidden from ChatGPT)</span>`
+               : ''}
+           </div>`
+        : ''}
       ${blocker ? `<p class="blocker" role="alert">⚠️ ${escapeHtml(blocker)}</p>` : ''}
+
+      <div class="competitor-hero" id="competitor-hero" aria-live="polite">
+        <span class="competitor-hero-loading">
+          <span class="teaser-spinner" aria-hidden="true"></span>
+          Finding who's appearing instead of ${escapeHtml(hostname ? hostname : 'you')}…
+        </span>
+      </div>
 
       <ul class="signals" aria-label="Signal summary">
         ${Object.entries(signals).map(([key, s]) => renderSignalSummary(key, s)).join('')}
@@ -179,21 +344,28 @@ function renderResult({ grade, score, blocker, signals, sitePages }) {
       ${paid
         ? (visibilityPct !== null ? renderVisibilityGauge(visibilityPct, missingWordCount) : '')
           + (hasSitePages ? renderSitePagesSummary(sitePages) : '')
-        : renderLockedAnalysis(visibilityPct, hasSitePages)
+        : renderLockedAnalysis(visibilityPct, hasSitePages, data)
       }
 
+      ${paid ? `
       <div class="report-cta-row" id="report-cta-row">
         <button class="btn-report" id="get-report-btn">
-          ${hasPaid() ? 'Get full report — prompts, fixes, llms.txt →' : 'Get full report — $79 →'}
+          Get full report — prompts, fixes, llms.txt →
         </button>
+      </div>` : ''}
+
+      <div class="grade-share-row">
+        <span class="grade-share-label">Share your grade:</span>
+        <a href="https://twitter.com/intent/tweet?text=${shareTweet}" target="_blank" rel="noopener" class="btn-share btn-share--twitter">
+          Post on X
+        </a>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://legibly.dev')}&summary=${shareLinkedIn}" target="_blank" rel="noopener" class="btn-share btn-share--linkedin">
+          Share on LinkedIn
+        </a>
       </div>
 
       <div class="full-report-panel" id="full-report-panel" hidden>
-        <div class="report-loading" id="report-loading" hidden>
-          <div class="spinner" aria-hidden="true"></div>
-          <p>Generating your full report<span class="dots">...</span></p>
-          <p class="loading-detail">Analyzing prompts you should be winning, generating schema snippets and llms.txt</p>
-        </div>
+        <div class="report-loading" id="report-loading" hidden></div>
         <div id="report-content"></div>
       </div>
     </div>
@@ -203,18 +375,29 @@ function renderResult({ grade, score, blocker, signals, sitePages }) {
   scanLayout?.classList.add('has-results');
   resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-  document.getElementById('breakdown-btn').addEventListener('click', toggleBreakdown);
-  document.querySelector('.locked-unlock-btn')?.addEventListener('click', () => {
-    if (hasPaid()) fetchFullReport();
-    else redirectToCheckout();
-  });
+  // Update OG/Twitter meta for the grade share URL
+  const shareTitle = `${escapeHtml(hostname)} scored grade ${safeGrade} on AI visibility — BlindGEO`;
+  const shareDesc  = `${safeGrade === 'F' || safeGrade === 'D' ? 'Most content is invisible to ChatGPT and Perplexity.' : 'AI search engines can partially read this site.'} Scan yours free at blindgeo.com`;
+  document.getElementById('og-title')?.setAttribute('content', shareTitle);
+  document.getElementById('og-description')?.setAttribute('content', shareDesc);
+  document.getElementById('tw-title')?.setAttribute('content', shareTitle);
+  document.getElementById('tw-desc')?.setAttribute('content', shareDesc);
 
-  // EMAIL GATE BYPASSED FOR TESTING — restore hasEmail() branches when re-enabling gate
-  if (hasPaid()) {
+  document.getElementById('breakdown-btn').addEventListener('click', toggleBreakdown);
+
+  document.querySelector('.locked-unlock-btn')?.addEventListener('click', () => redirectToCheckout('report'));
+  document.querySelector('.locked-snapshot-btn')?.addEventListener('click', () => redirectToCheckout('snapshot'));
+
+  if (paid) {
     document.getElementById('get-report-btn')?.addEventListener('click', fetchFullReport);
-  } else {
-    document.getElementById('get-report-btn')?.addEventListener('click', redirectToCheckout);
   }
+
+  // Load competitor names async after result renders
+  if (!paid) {
+    loadCompetitorTeaser();
+    renderLlmstxtPreview(data);
+  }
+
   resultSection.querySelectorAll('.info-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -298,48 +481,102 @@ function renderVisibilityGauge(pct, missingWords) {
 }
 
 async function fetchFullReport() {
-  const btn = document.getElementById('get-report-btn');
-  const panel = document.getElementById('full-report-panel');
+  const btn     = document.getElementById('get-report-btn');
+  const panel   = document.getElementById('full-report-panel');
   const loading = document.getElementById('report-loading');
   const content = document.getElementById('report-content');
+  if (!panel) return;
 
-  btn.disabled = true;
-  btn.textContent = 'Generating report…';
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating report…'; }
   panel.hidden = false;
-  loading.removeAttribute('hidden');
   content.innerHTML = '';
 
-  // Animate dots
-  let dotCount = 0;
-  const dotInterval = setInterval(() => {
-    const dots = document.querySelector('.dots');
-    if (dots) dots.textContent = '.'.repeat((++dotCount % 3) + 1);
-  }, 500);
+  // Build prompt preview from current scan data
+  const scanPrompts = currentScanData?.report?.prompts
+    ? Object.values(currentScanData.report.prompts).flat().slice(0, 3).map(p => typeof p === 'string' ? p : p.prompt)
+    : [];
+  const promptPreview = scanPrompts.length
+    ? scanPrompts.map(p => `<div class="loading-prompt">"${escapeHtml(p)}"</div>`).join('')
+    : ['Checking if AI cites your site…', 'Scanning for competitors in AI results…', 'Analyzing your content structure…']
+        .map(p => `<div class="loading-prompt">${escapeHtml(p)}</div>`).join('');
+
+  const STEPS = [
+    'Running 12 prompts through Perplexity',
+    'Checking who appears instead of you',
+    'Generating schema markup for your site',
+    'Writing your llms.txt file',
+    'Building copy-paste fix instructions',
+  ];
+
+  loading.innerHTML = `
+    <div class="report-loading-rich">
+      <div class="loading-left">
+        <div class="loading-title">Generating your AI visibility report…</div>
+        <ul class="loading-steps" id="loading-steps">
+          ${STEPS.map((s, i) => `<li class="loading-step" data-step="${i}">
+            <span class="step-icon" aria-hidden="true">☐</span>
+            <span>${escapeHtml(s)}</span>
+          </li>`).join('')}
+        </ul>
+        <p class="loading-eta">This takes 30–60 seconds.</p>
+      </div>
+      <div class="loading-right">
+        <div class="loading-prompts-title">Prompts we're checking:</div>
+        ${promptPreview}
+        <div class="loading-provider-row">
+          <span class="loading-provider-label">Via:</span>
+          <span class="loading-provider-badge">Perplexity</span>
+        </div>
+      </div>
+    </div>
+  `;
+  loading.removeAttribute('hidden');
+
+  // Tick steps progressively (fake progress aligned to ~40s real time)
+  let step = 0;
+  const stepInterval = setInterval(() => {
+    const stepEl = document.querySelector(`[data-step="${step}"] .step-icon`);
+    if (stepEl) stepEl.textContent = '✓';
+    document.querySelector(`[data-step="${step}"]`)?.classList.add('done');
+    step++;
+    if (step >= STEPS.length) clearInterval(stepInterval);
+  }, 7500);
 
   try {
+    // Include Stripe session_id for server-side payment verification
+    const paidRaw   = localStorage.getItem('legibly_paid');
+    const sessionId = (() => { try { const v = JSON.parse(paidRaw); return typeof v === 'string' ? v : null; } catch { return null; } })();
+
     const res = await fetch('/api/report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: currentUrl }),
+      body: JSON.stringify({ url: currentUrl, ...(sessionId ? { session_id: sessionId } : {}) }),
     });
+    clearInterval(stepInterval);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error ?? 'Report failed');
+      throw new Error(err.error ?? 'Report generation failed');
     }
     const data = await res.json();
-
-    // Store in sessionStorage and navigate to dashboard
-    sessionStorage.setItem('legibly_report', JSON.stringify(data));
-    window.location.href = '/report.html';
-
+    if (data.reportId) {
+      // Persist via DB — navigate with ID so the URL is shareable and survives tab close
+      window.location.href = `/report.html?id=${encodeURIComponent(data.reportId)}`;
+    } else {
+      // Fallback: store in sessionStorage (no DB — e.g. missing API keys)
+      sessionStorage.setItem('legibly_report', JSON.stringify(data));
+      window.location.href = '/report.html';
+    }
   } catch (err) {
-    clearInterval(dotInterval);
-    loading.style.display = 'none';
-    content.innerHTML = `<p class="report-error">Report generation failed: ${escapeHtml(err.message)}</p>`;
-    btn.disabled = false;
-    btn.textContent = 'Retry full report →';
-  } finally {
-    clearInterval(dotInterval);
+    clearInterval(stepInterval);
+    loading.hidden = true;
+    content.innerHTML = `
+      <div class="report-error-card">
+        <p class="report-error">Report generation failed: ${escapeHtml(err.message)}</p>
+        <p style="font-size:.875rem;color:var(--color-muted);margin-top:.5rem">Your scan result is still saved. You can retry below.</p>
+        <button class="btn-primary" id="retry-report-btn" style="margin-top:1rem">Retry →</button>
+      </div>`;
+    document.getElementById('retry-report-btn')?.addEventListener('click', fetchFullReport);
+    if (btn) { btn.disabled = false; btn.textContent = 'Retry full report →'; }
   }
 }
 
@@ -584,16 +821,19 @@ function infoBtn(key) {
 }
 
 function renderSignalSummary(key, signal) {
-  const label = SIGNAL_LABELS[key] ?? key;
   if (signal.stub) {
     return `<li class="signal signal--stub">
       <span class="signal-icon" aria-hidden="true">·</span>
-      <span class="signal-label">${escapeHtml(label)}${infoBtn(key)}</span>
+      <span class="signal-label">${escapeHtml(SIGNAL_LABELS[key] ?? key)}${infoBtn(key)}</span>
       <span class="signal-detail">In full report</span>
     </li>`;
   }
   const status = signal.score === 0 ? 'fail' : signal.score >= 8 ? 'pass' : 'partial';
-  const icon = status === 'pass' ? '✓' : status === 'fail' ? '✗' : '!';
+  const icon   = status === 'pass' ? '✓' : status === 'fail' ? '✗' : '!';
+  // Use fail-state label when failing so it reads as a problem statement
+  const label  = status === 'pass'
+    ? (SIGNAL_LABELS[key] ?? key)
+    : (SIGNAL_LABELS_FAIL[key] ?? SIGNAL_LABELS[key] ?? key);
   return `<li class="signal signal--${status}">
     <span class="signal-icon" aria-hidden="true">${icon}</span>
     <span class="signal-label">${escapeHtml(label)}${infoBtn(key)}</span>
@@ -611,22 +851,25 @@ const FIX_HINTS = {
 };
 
 function renderBreakdownRow(key, signal) {
-  const label = SIGNAL_LABELS[key] ?? key;
   if (signal.stub) {
     return `<div class="breakdown-row breakdown-row--stub">
       <div class="breakdown-row-header">
         <span class="breakdown-icon" aria-hidden="true">·</span>
-        <span class="breakdown-label">${escapeHtml(label)}${infoBtn(key)}</span>
+        <span class="breakdown-label">${escapeHtml(SIGNAL_LABELS[key] ?? key)}${infoBtn(key)}</span>
         <span class="breakdown-badge badge--stub">Full report</span>
       </div>
       <p class="breakdown-detail">Deeper analysis available in the complete report.</p>
     </div>`;
   }
-  const status = signal.score === 0 ? 'fail' : signal.score >= 8 ? 'pass' : 'partial';
-  const icon = status === 'pass' ? '✓' : status === 'fail' ? '✗' : '!';
+  const status     = signal.score === 0 ? 'fail' : signal.score >= 8 ? 'pass' : 'partial';
+  const icon       = status === 'pass' ? '✓' : status === 'fail' ? '✗' : '!';
   const badgeLabel = status === 'pass' ? 'Passing' : status === 'fail' ? 'Failing' : 'Partial';
+  // Fail-state label as the header, technical tooltip as context
+  const label      = status === 'pass'
+    ? (SIGNAL_LABELS[key] ?? key)
+    : (SIGNAL_LABELS_FAIL[key] ?? SIGNAL_LABELS[key] ?? key);
   const hint = (status !== 'pass' && FIX_HINTS[key])
-    ? `<p class="breakdown-hint">Fix: ${escapeHtml(FIX_HINTS[key])}</p>`
+    ? `<p class="breakdown-hint">→ ${escapeHtml(FIX_HINTS[key])}</p>`
     : '';
   return `<div class="breakdown-row breakdown-row--${status}">
     <div class="breakdown-row-header">
@@ -661,8 +904,46 @@ function hasEmail() {
   return !!localStorage.getItem('legibly_email');
 }
 
+// Server-authoritative tier — fetched once on page load
+let _serverTier = null;
+let _tierFetched = false;
+
+async function fetchServerTier() {
+  if (_tierFetched) return;
+  _tierFetched = true;
+  try {
+    const res = await fetch('/api/subscription/status', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      _serverTier = data.tier ?? null;
+    }
+  } catch { /* unauthenticated or offline — fall back to localStorage */ }
+}
+
+// Called once early on page load (non-blocking)
+fetchServerTier();
+
 function hasPaid() {
-  return !!localStorage.getItem('legibly_paid');
+  return hasPaidTier('fix');
+}
+
+function hasPaidTier(tier) {
+  const TIERS = { snapshot: 1, fix: 2, monitor: 3, deploy: 4 };
+  // Server-authoritative check (populated by fetchServerTier)
+  if (_serverTier) {
+    return (TIERS[_serverTier] ?? 0) >= (TIERS[tier] ?? 0);
+  }
+  // Fallback: localStorage (legacy Stripe session or test mode)
+  const raw = localStorage.getItem('legibly_paid');
+  if (!raw) return false;
+  try {
+    const val = JSON.parse(raw);
+    const userTier = (typeof val === 'object' && val?.tier) ? val.tier : null;
+    if (!userTier) return false;
+    return (TIERS[userTier] ?? 0) >= (TIERS[tier] ?? 0);
+  } catch {
+    return false;
+  }
 }
 
 async function deployFixes() {
@@ -713,20 +994,20 @@ async function deployFixes() {
   }
 }
 
-async function redirectToCheckout() {
-  const btn = document.getElementById('get-report-btn');
+async function redirectToCheckout(tier = 'report') {
+  const btn = document.querySelector('.locked-unlock-btn') ?? document.querySelector('.locked-snapshot-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Redirecting to checkout…'; }
   try {
     const res  = await fetch('/api/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: currentUrl }),
+      body: JSON.stringify({ url: currentUrl, tier }),
     });
     if (!res.ok) throw new Error('Checkout unavailable');
     const { url } = await res.json();
     window.location.href = url;
   } catch {
-    if (btn) { btn.disabled = false; btn.textContent = 'Get full report — $79 →'; }
+    if (btn) { btn.disabled = false; btn.textContent = tier === 'snapshot' ? 'See who\'s winning — $29 →' : 'Full report with fixes — $79 →'; }
     showError('Could not start checkout. Please try again.');
   }
 }

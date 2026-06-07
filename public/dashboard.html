@@ -1,0 +1,1664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Legibly</title>
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --ink:    #0a0a0a;
+      --paper:  #ffffff;
+      --hi:     #e8ff47;
+      --pass:   #4ade80;
+      --fail:   #f87171;
+      --warn:   #fbbf24;
+      --muted:  #6b7280;
+      --border: #e5e5e0;
+      --sidebar-bg: #f9f9f8;
+      --sidebar-w: 220px;
+    }
+
+    html, body { height: 100%; overflow: hidden; }
+    body { font-family: 'Public Sans', sans-serif; background: var(--paper); color: var(--ink); display: flex; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
+      height: 100vh;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .sidebar-logo {
+      padding: 20px 18px 16px;
+      font-family: 'Libre Baskerville', serif;
+      font-size: 17px;
+      font-weight: 700;
+      text-decoration: none;
+      color: var(--ink);
+      border-bottom: 1px solid var(--border);
+      display: block;
+    }
+
+    /* Site selector */
+    .site-selector {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .site-selector select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--paper);
+      font-family: 'Public Sans', sans-serif;
+      font-size: 13px;
+      color: var(--ink);
+      cursor: pointer;
+      outline: none;
+    }
+
+    .nav-group { padding: 8px 0 4px; }
+    .nav-label {
+      padding: 4px 16px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 0;
+      transition: background 0.1s, color 0.1s;
+      user-select: none;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      text-decoration: none;
+    }
+    .nav-item:hover { background: #efefed; color: var(--ink); }
+    .nav-item.active { background: #e8e8e5; color: var(--ink); font-weight: 600; }
+    .nav-item .nav-icon { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.6; }
+    .nav-item.active .nav-icon { opacity: 1; }
+    .nav-badge {
+      margin-left: auto;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      background: var(--fail);
+      color: white;
+      font-weight: 600;
+    }
+    .nav-lock {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* Sidebar bottom */
+    .sidebar-bottom {
+      margin-top: auto;
+      border-top: 1px solid var(--border);
+    }
+    .early-access {
+      margin: 12px;
+      padding: 12px;
+      background: #fffbea;
+      border: 1px solid #fde68a;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .early-access strong { display: block; margin-bottom: 4px; font-size: 13px; }
+    .promo-code {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      background: var(--paper);
+      border: 1px solid #fde68a;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+    .copy-btn {
+      margin-left: auto;
+      cursor: pointer;
+      font-size: 11px;
+      color: var(--muted);
+      background: none;
+      border: none;
+      padding: 0;
+    }
+    .upgrade-btn {
+      display: block;
+      margin: 0 12px 8px;
+      padding: 10px;
+      background: var(--ink);
+      color: var(--hi);
+      text-align: center;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      font-family: 'Public Sans', sans-serif;
+    }
+    .user-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-top: 1px solid var(--border);
+    }
+    .user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--border);
+      flex-shrink: 0;
+      object-fit: cover;
+    }
+    .user-email { font-size: 12px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tier-badge {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: var(--ink);
+      color: var(--hi);
+      font-weight: 600;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .settings-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 16px;
+      flex-shrink: 0;
+      padding: 0;
+    }
+
+    /* ── Main content ── */
+    .main {
+      flex: 1;
+      height: 100vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .main-header {
+      padding: 20px 28px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--paper);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .main-header h1 {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .main-header .header-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .main-body { padding: 28px; flex: 1; }
+
+    /* ── Section panes ── */
+    .pane { display: none; }
+    .pane.active { display: block; }
+
+    /* Home pane */
+    .scan-cards { display: flex; flex-direction: column; gap: 12px; }
+    .scan-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .grade-badge {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Libre Baskerville', serif;
+      font-size: 24px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .grade-A { background: #dcfce7; color: #166534; }
+    .grade-B { background: #d1fae5; color: #065f46; }
+    .grade-C { background: #fef9c3; color: #713f12; }
+    .grade-D { background: #ffedd5; color: #9a3412; }
+    .grade-F { background: #fee2e2; color: #991b1b; }
+    .scan-card-info { flex: 1; min-width: 0; }
+    .scan-url { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .scan-meta { font-size: 13px; color: var(--muted); margin-top: 3px; }
+    .grade-delta { font-size: 12px; color: var(--pass); font-weight: 600; margin-top: 2px; }
+    .grade-delta.down { color: var(--fail); }
+    .grade-sparkline { display: block; margin-top: 4px; }
+    .fixed-badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 1px 7px;
+      background: #dcfce7;
+      color: #166534;
+      border-radius: 10px;
+      vertical-align: middle;
+      margin-left: 6px;
+    }
+    .scan-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .btn-sm {
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 5px;
+      cursor: pointer;
+      font-family: 'Public Sans', sans-serif;
+      border: 1.5px solid var(--border);
+      background: var(--paper);
+      color: var(--ink);
+      transition: background 0.1s;
+      text-decoration: none;
+    }
+    .btn-sm:hover { background: #f5f5f3; }
+    .btn-sm.primary { background: var(--ink); color: var(--hi); border-color: var(--ink); }
+    .btn-sm.primary:hover { opacity: 0.85; }
+
+    /* New scan form on home */
+    .new-scan-card {
+      border: 1.5px dashed var(--border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .new-scan-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+    .scan-input-row { display: flex; gap: 8px; }
+    .scan-input-row input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: 'Public Sans', sans-serif;
+      font-size: 14px;
+      outline: none;
+    }
+    .scan-input-row input:focus { border-color: var(--ink); }
+
+    /* Signals pane */
+    .signals-table { width: 100%; border-collapse: collapse; }
+    .signals-table th {
+      text-align: left;
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .signals-table td { padding: 14px 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .signal-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .status-pass { background: #dcfce7; color: #166534; }
+    .status-warn { background: #fef9c3; color: #713f12; }
+    .status-fail { background: #fee2e2; color: #991b1b; }
+    .signal-fix-hint { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+    /* Prompts pane */
+    .prompt-list { display: flex; flex-direction: column; gap: 12px; }
+    .prompt-card { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .prompt-q { padding: 14px 16px; font-size: 14px; font-weight: 600; background: #fafaf9; border-bottom: 1px solid var(--border); }
+    .prompt-providers { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+    .provider-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+    .provider-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .provider-icon.perplexity { background: #0d0d0d; color: white; }
+    .provider-icon.chatgpt    { background: #10a37f; color: white; }
+    .provider-icon.gemini     { background: #4285f4; color: white; }
+    .provider-icon.aioverviews { background: #fbbc04; color: #0d0d0d; }
+    .provider-result { flex: 1; }
+    .provider-cited    { color: var(--pass); font-weight: 600; }
+    .provider-missing  { color: var(--fail); }
+    .provider-locked   {
+      color: var(--muted);
+      font-size: 12px;
+      padding: 3px 8px;
+      background: #f5f5f3;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    /* Competitors pane */
+    .competitor-list { display: flex; flex-direction: column; gap: 1px; }
+    .competitor-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .competitor-rank { width: 24px; font-size: 13px; color: var(--muted); font-weight: 600; text-align: center; }
+    .competitor-domain { font-size: 14px; font-weight: 600; flex: 1; }
+    .competitor-count { font-size: 13px; color: var(--muted); }
+
+    /* Citations pane */
+    .citation-section { margin-bottom: 24px; }
+    .citation-section h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; }
+    .citation-row { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .citation-url { flex: 1; color: #1d4ed8; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .citation-count { color: var(--muted); flex-shrink: 0; }
+
+    /* Fixes pane */
+    .fixes-list { display: flex; flex-direction: column; gap: 16px; }
+    .fix-card { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .fix-header { padding: 12px 16px; background: #fafaf9; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+    .fix-title { font-size: 14px; font-weight: 600; }
+    .fix-body { padding: 16px; }
+    .fix-code {
+      background: #f5f5f3;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 12px 14px;
+      font-family: monospace;
+      font-size: 12px;
+      overflow-x: auto;
+      white-space: pre;
+      margin-top: 8px;
+    }
+    .fix-locked-overlay {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      background: #fafaf9;
+    }
+    .fix-locked-text { font-size: 13px; color: var(--muted); }
+    .fix-unlock-btn {
+      padding: 7px 14px;
+      background: var(--ink);
+      color: var(--hi);
+      border: none;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Public Sans', sans-serif;
+    }
+
+    /* Deploy pane */
+    .deploy-card { border: 1px solid var(--border); border-radius: 8px; padding: 24px; max-width: 560px; }
+    .deploy-card h2 { font-family: 'Libre Baskerville', serif; font-size: 20px; margin-bottom: 8px; }
+    .deploy-card p { color: var(--muted); font-size: 14px; line-height: 1.6; margin-bottom: 16px; }
+    .deploy-price {
+      font-size: 28px;
+      font-weight: 700;
+      font-family: 'Libre Baskerville', serif;
+      margin: 16px 0 8px;
+    }
+    .deploy-price span { font-size: 16px; font-weight: 400; color: var(--muted); }
+    .deploy-items { list-style: none; padding: 0; margin: 12px 0 20px; }
+    .deploy-items li { padding: 6px 0; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+    .deploy-items li::before { content: '✓'; color: var(--pass); font-weight: 700; }
+    .btn-deploy {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: var(--ink);
+      color: var(--hi);
+      border: none;
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Public Sans', sans-serif;
+      text-align: center;
+      text-decoration: none;
+    }
+
+    /* AI View pane */
+    .ai-view-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .ai-view-panel { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .ai-view-header { padding: 12px 16px; background: #fafaf9; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; }
+    .ai-view-body { padding: 16px; font-size: 13px; line-height: 1.7; max-height: 60vh; overflow-y: auto; }
+    .visibility-bar { margin-bottom: 20px; }
+    .visibility-bar h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+    .bar-track { background: var(--border); border-radius: 4px; height: 8px; overflow: hidden; }
+    .bar-fill  { height: 100%; border-radius: 4px; background: var(--pass); transition: width 0.6s; }
+    .bar-fill.low  { background: var(--fail); }
+    .bar-fill.mid  { background: var(--warn); }
+    .visibility-label { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+    /* Settings pane */
+    .settings-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 28px; }
+    .settings-tab {
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      font-family: 'Public Sans', sans-serif;
+      color: var(--muted);
+    }
+    .settings-tab.active { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+    .settings-pane { display: none; max-width: 560px; }
+    .settings-pane.active { display: block; }
+    .form-row { margin-bottom: 20px; }
+    .form-row label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .form-row input, .form-row textarea, .form-row select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: 'Public Sans', sans-serif;
+      font-size: 14px;
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.15s;
+      background: var(--paper);
+    }
+    .form-row input:focus, .form-row textarea:focus { border-color: var(--ink); }
+    .form-row textarea { min-height: 80px; resize: vertical; line-height: 1.5; }
+    .form-hint { font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+    .domain-prefix {
+      display: flex;
+      align-items: center;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .domain-prefix span {
+      padding: 10px 10px;
+      background: #f5f5f3;
+      font-size: 14px;
+      color: var(--muted);
+      border-right: 1px solid var(--border);
+    }
+    .domain-prefix input { border: none; border-radius: 0; flex: 1; }
+    .form-actions { display: flex; gap: 10px; margin-top: 24px; }
+    .btn-save {
+      padding: 10px 22px;
+      background: var(--ink);
+      color: var(--hi);
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Public Sans', sans-serif;
+    }
+    .btn-reset {
+      padding: 10px 22px;
+      background: none;
+      color: var(--ink);
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Public Sans', sans-serif;
+    }
+
+    /* Provider selection */
+    .provider-select-list { display: flex; flex-direction: column; gap: 10px; margin: 16px 0; }
+    .provider-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .provider-option.checked { border-color: var(--ink); }
+    .provider-option.locked { opacity: 0.55; cursor: not-allowed; }
+    .provider-option input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--ink); }
+    .provider-name { font-size: 14px; font-weight: 600; flex: 1; }
+    .provider-sub  { font-size: 12px; color: var(--muted); }
+    .provider-lock-label {
+      font-size: 11px;
+      padding: 2px 8px;
+      background: #f5f5f3;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--muted);
+    }
+
+    /* Notification toggles */
+    .notify-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .notify-text { flex: 1; }
+    .notify-title { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+    .notify-desc  { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-slider::after {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: white;
+      top: 3px;
+      left: 3px;
+      transition: transform 0.2s;
+    }
+    .toggle input:checked + .toggle-slider { background: var(--ink); }
+    .toggle input:checked + .toggle-slider::after { transform: translateX(20px); }
+
+    /* Billing */
+    .billing-card { border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+    .billing-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+    .billing-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .billing-row:last-child { border-bottom: none; }
+    .billing-val { font-weight: 600; }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-card { border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center; }
+    .stat-num { font-family: 'Libre Baskerville', serif; font-size: 28px; font-weight: 700; }
+    .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 60px 20px; }
+    .empty-state h2 { font-family: 'Libre Baskerville', serif; font-size: 20px; margin-bottom: 8px; }
+    .empty-state p { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+
+    /* Loading */
+    .loading { text-align: center; padding: 60px; color: var(--muted); font-size: 14px; }
+
+    /* Mobile sidebar collapse */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      body { overflow: auto; }
+      .main { height: auto; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <a href="/" class="sidebar-logo">BlindGEO</a>
+
+  <div class="site-selector">
+    <select id="site-select" aria-label="Select site">
+      <option value="">Loading…</option>
+    </select>
+  </div>
+
+  <nav>
+    <div class="nav-group">
+      <div class="nav-label">Overview</div>
+      <button class="nav-item active" data-section="home">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
+        Home
+      </button>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Analysis</div>
+      <button class="nav-item" data-section="signals">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+        Signals
+      </button>
+      <button class="nav-item" data-section="aiview">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/></svg>
+        AI View
+      </button>
+      <button class="nav-item" data-section="prompts">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/></svg>
+        Prompts
+      </button>
+      <button class="nav-item" data-section="competitors">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        Competitors
+      </button>
+      <button class="nav-item" data-section="citations">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/></svg>
+        Citations
+      </button>
+      <button class="nav-item" data-section="fixes" id="nav-fixes">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
+        Fixes
+        <span class="nav-lock" id="fixes-lock">🔒</span>
+      </button>
+      <button class="nav-item" data-section="deploy" id="nav-deploy">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+        Deploy
+        <span class="nav-lock" id="deploy-lock">🔒</span>
+      </button>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Configuration</div>
+      <button class="nav-item" data-section="settings" data-settings-tab="brand">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
+        Brand
+      </button>
+    </div>
+  </nav>
+
+  <div class="sidebar-bottom">
+    <div class="early-access">
+      <strong>⭐ Early Access</strong>
+      Founder's Deal — 30% off your first report.
+      <div class="promo-code">
+        LEGIBLY30
+        <button class="copy-btn" onclick="navigator.clipboard.writeText('LEGIBLY30').then(()=>this.textContent='Copied!')">Copy</button>
+      </div>
+    </div>
+    <button class="upgrade-btn" id="upgrade-btn" onclick="startCheckout('fix')">Upgrade to Fix — $19/mo →</button>
+    <div class="user-row">
+      <img class="user-avatar" id="user-avatar" src="" alt="avatar">
+      <span class="user-email" id="user-email">Loading…</span>
+      <span class="tier-badge" id="tier-badge">FREE</span>
+      <button class="settings-btn" onclick="showSection('settings')" title="Settings">⚙</button>
+    </div>
+  </div>
+</aside>
+
+<!-- Main content -->
+<main class="main" id="main">
+
+  <!-- Header -->
+  <div class="main-header">
+    <div>
+      <h1 id="header-title">Dashboard</h1>
+      <div class="header-sub" id="header-sub"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn-sm" id="rescan-btn" style="display:none" onclick="triggerRescan()">Re-scan</button>
+      <form method="POST" action="/auth/logout" style="margin:0">
+        <button type="submit" class="btn-sm">Sign out</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading" id="loading">Loading your dashboard…</div>
+
+  <!-- ── Home ── -->
+  <div class="pane main-body" id="pane-home">
+    <div id="home-scans" class="scan-cards"></div>
+    <div style="margin-top:24px">
+      <div class="new-scan-card">
+        <h3>Scan a new site</h3>
+        <div class="scan-input-row">
+          <input type="url" id="new-scan-url" placeholder="https://yoursite.com">
+          <button class="btn-sm primary" onclick="submitNewScan()">Scan free →</button>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-top:8px" id="scan-quota"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Signals ── -->
+  <div class="pane main-body" id="pane-signals">
+    <div id="signals-content"></div>
+  </div>
+
+  <!-- ── AI View ── -->
+  <div class="pane main-body" id="pane-aiview">
+    <div id="aiview-content"></div>
+  </div>
+
+  <!-- ── Prompts ── -->
+  <div class="pane main-body" id="pane-prompts">
+    <div id="prompts-content"></div>
+  </div>
+
+  <!-- ── Competitors ── -->
+  <div class="pane main-body" id="pane-competitors">
+    <div id="competitors-content"></div>
+    <div style="margin-top:32px;border-top:1px solid var(--border);padding-top:24px" id="compare-section">
+      <h2 style="font-size:16px;font-weight:600;margin-bottom:6px">Side-by-side comparison</h2>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Paste two URLs to see a signal-by-signal breakdown of how your site compares to a competitor.</p>
+      <div id="compare-gate" style="display:none">
+        <p style="font-size:13px;color:var(--muted);padding:12px;background:var(--sidebar-bg);border-radius:6px;border:1px solid var(--border)">
+          Competitor comparison is available on the Fix+Monitor plan.
+          <button class="btn-sm primary" style="margin-left:8px" onclick="startCheckout('monitor')">Upgrade — $49/mo</button>
+        </p>
+      </div>
+      <div id="compare-form">
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <input type="url" id="compare-url-a" placeholder="Your site: yoursite.com" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;outline:none">
+          <input type="url" id="compare-url-b" placeholder="Competitor: competitor.com" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;outline:none">
+          <button class="btn-save" id="compare-btn" onclick="runComparison()" style="flex-shrink:0">Compare →</button>
+        </div>
+        <div id="compare-result"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Citations ── -->
+  <div class="pane main-body" id="pane-citations">
+    <div id="citations-content"></div>
+  </div>
+
+  <!-- ── Fixes ── -->
+  <div class="pane main-body" id="pane-fixes">
+    <div id="fixes-content"></div>
+  </div>
+
+  <!-- ── Deploy ── -->
+  <div class="pane main-body" id="pane-deploy">
+    <div id="deploy-content"></div>
+  </div>
+
+  <!-- ── Settings ── -->
+  <div class="pane main-body" id="pane-settings">
+    <div class="settings-tabs" id="settings-tabs">
+      <button class="settings-tab active" data-stab="overview">Overview</button>
+      <button class="settings-tab" data-stab="brand">Brand</button>
+      <button class="settings-tab" data-stab="providers">AI Providers</button>
+      <button class="settings-tab" data-stab="notifications">Notifications</button>
+      <button class="settings-tab" data-stab="billing">Billing</button>
+    </div>
+
+    <!-- Overview -->
+    <div class="settings-pane active" id="stab-overview">
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card"><div class="stat-num" id="stat-scans">—</div><div class="stat-label">Scans</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-reports">—</div><div class="stat-label">Reports</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-deploys">—</div><div class="stat-label">Deploys</div></div>
+      </div>
+      <p style="font-size:13px;color:var(--muted)" id="member-since"></p>
+    </div>
+
+    <!-- Brand -->
+    <div class="settings-pane" id="stab-brand">
+      <form id="brand-form" novalidate>
+        <div class="form-row">
+          <label for="brand-name">Brand name</label>
+          <input type="text" id="brand-name" placeholder="Your Company">
+        </div>
+        <div class="form-row">
+          <label>Primary domain</label>
+          <div class="domain-prefix">
+            <span>https://</span>
+            <input type="text" id="brand-domain" placeholder="yoursite.com">
+          </div>
+        </div>
+        <div class="form-row">
+          <label for="brand-desc">Brand description</label>
+          <textarea id="brand-desc" placeholder="Describe what your business does, who you serve, and your key products or services."></textarea>
+          <p class="form-hint">The more specific you are, the better prompts Legibly generates for you.</p>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn-save">Save changes</button>
+          <button type="reset" class="btn-reset">Reset</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Providers -->
+    <div class="settings-pane" id="stab-providers">
+      <p style="font-size:14px;color:var(--muted);margin-bottom:16px">Choose which AI providers to query for each prompt. Each provider is queried in parallel.</p>
+      <div class="provider-select-list">
+        <label class="provider-option checked" id="opt-perplexity">
+          <input type="checkbox" checked>
+          <div class="provider-icon perplexity">P</div>
+          <div>
+            <div class="provider-name">Perplexity</div>
+            <div class="provider-sub">Perplexity AI with web search</div>
+          </div>
+        </label>
+        <label class="provider-option checked" id="opt-gemini">
+          <input type="checkbox" checked>
+          <div class="provider-icon gemini">G</div>
+          <div>
+            <div class="provider-name">Google Gemini</div>
+            <div class="provider-sub">Gemini with Google Search grounding</div>
+          </div>
+        </label>
+        <div class="provider-option locked" id="opt-chatgpt">
+          <div class="provider-icon chatgpt">C</div>
+          <div>
+            <div class="provider-name">ChatGPT</div>
+            <div class="provider-sub">OpenAI GPT with web search</div>
+          </div>
+          <span class="provider-lock-label">Upgrade to unlock</span>
+        </div>
+        <div class="provider-option locked" id="opt-aioverviews">
+          <div class="provider-icon aioverviews">G</div>
+          <div>
+            <div class="provider-name">Google AI Overviews</div>
+            <div class="provider-sub">Appears in Google search results</div>
+          </div>
+          <span class="provider-lock-label">Upgrade to unlock</span>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-save" onclick="saveProviders()">Save changes</button>
+      </div>
+
+      <hr style="margin:28px 0;border:none;border-top:1px solid var(--border)">
+      <h3 style="font-size:15px;font-weight:600;margin-bottom:6px">Prompt Monitoring Slots</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Define up to 10 prompts (Fix tier) or 40 prompts (Fix+Monitor) to check weekly. BlindGEO will run each through Perplexity and alert you if your site appears — or stops appearing.</p>
+      <div id="prompt-slots-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="new-prompt-input" placeholder="e.g. What are the best dental implant brands?" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;outline:none">
+        <button class="btn-save" onclick="addPromptSlot()" style="flex-shrink:0">Add</button>
+      </div>
+      <p id="prompt-slot-msg" style="font-size:12px;margin-top:6px"></p>
+    </div>
+
+    <!-- Notifications -->
+    <div class="settings-pane" id="stab-notifications">
+      <h3 style="font-size:16px;font-weight:600;margin-bottom:16px">Email Notifications</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Choose which emails you'd like to receive.</p>
+      <div class="notify-row">
+        <div class="notify-text">
+          <div class="notify-title">Weekly Reports</div>
+          <div class="notify-desc">Receive a weekly summary of your AI visibility score, new citations, and competitor activity.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="notify-weekly" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="notify-row">
+        <div class="notify-text">
+          <div class="notify-title">Grade Alerts</div>
+          <div class="notify-desc">Get notified immediately when your AI visibility grade drops.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="notify-grade">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="notify-row">
+        <div class="notify-text">
+          <div class="notify-title">Product Updates</div>
+          <div class="notify-desc">New features, tips, and product announcements.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="notify-product">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-top:16px">You can unsubscribe at any time by clicking the unsubscribe link in any email footer.</p>
+      <div class="form-actions" style="margin-top:20px">
+        <button class="btn-save" onclick="saveNotifications()">Save changes</button>
+      </div>
+    </div>
+
+    <!-- Billing -->
+    <div class="settings-pane" id="stab-billing">
+      <div class="billing-card" id="billing-plan">
+        <h3>Current plan</h3>
+        <div class="billing-row"><span>Plan</span><span class="billing-val" id="billing-tier">Free</span></div>
+        <div class="billing-row"><span>Member since</span><span class="billing-val" id="billing-since">—</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+        <button class="btn-sm primary" style="text-align:center" onclick="startCheckout('fix')">Start Fix — $19/mo →</button>
+        <button class="btn-sm" style="text-align:center" onclick="startCheckout('deploy')">GitHub deploy — $79 one-time →</button>
+      </div>
+      <p style="font-size:12px;color:var(--muted)">Have a promo code? Apply it at checkout.</p>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────────
+  let me = null;
+  let scans = [];
+  let currentScan = null;
+  let currentReport = null;
+
+  const TIER_ORDER = { snapshot: 1, report: 2, deploy: 3 };
+  function tierGte(required) {
+    const t = me?.tier ?? null;
+    return t && (TIER_ORDER[t] ?? 0) >= (TIER_ORDER[required] ?? 0);
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  async function startCheckout(tier, billing = 'monthly') {
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier, billing }),
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Checkout unavailable');
+      const { url } = await res.json();
+      window.location.href = url;
+    } catch (err) {
+      showToast('Could not start checkout. Please try again.', 'error');
+    }
+  }
+
+  async function init() {
+    try {
+      const [meRes, scansRes] = await Promise.all([
+        fetch('/api/me'),
+        fetch('/api/scans'),
+      ]);
+      if (meRes.status === 401) { window.location.href = '/login.html'; return; }
+      me = await meRes.json();
+      const scansData = await scansRes.json();
+      scans = scansData.scans ?? [];
+    } catch {
+      document.getElementById('loading').textContent = 'Error loading dashboard. Please refresh.';
+      return;
+    }
+
+    document.getElementById('loading').style.display = 'none';
+    renderUser();
+    renderSiteSelector();
+    renderHome();
+    showSection('home');
+
+    // Load report if we have scans
+    if (scans.length > 0) {
+      currentScan = scans[0];
+      await loadReport(currentScan.report_id);
+    }
+
+    // Load brand settings + prompt slots
+    loadBrandSettings();
+    loadPromptSlots();
+    initCompareSection();
+  }
+
+  function renderUser() {
+    const avatar = document.getElementById('user-avatar');
+    avatar.src = me.avatarUrl ?? '';
+    avatar.onerror = () => { avatar.src = ''; avatar.style.background = '#e5e5e0'; };
+    document.getElementById('user-email').textContent = me.email ?? '';
+    document.getElementById('tier-badge').textContent = (me.tier ?? 'free').toUpperCase();
+    // Show/hide lock icons
+    if (tierGte('report')) document.getElementById('fixes-lock').style.display = 'none';
+    if (tierGte('deploy')) document.getElementById('deploy-lock').style.display = 'none';
+    if (tierGte('report')) document.getElementById('upgrade-btn').style.display = 'none';
+    // Stats
+    const ts = me.createdAt ? new Date(me.createdAt * 1000).toLocaleDateString('en-US', { year:'numeric', month:'long' }) : '—';
+    document.getElementById('member-since').textContent = `Member since ${ts}`;
+    document.getElementById('stat-scans').textContent = scans.length;
+    document.getElementById('billing-tier').textContent = (me.tier ?? 'Free').charAt(0).toUpperCase() + (me.tier ?? 'free').slice(1);
+    document.getElementById('billing-since').textContent = ts;
+  }
+
+  function renderSiteSelector() {
+    const sel = document.getElementById('site-select');
+    const urls = [...new Set(scans.map(s => s.url))];
+    if (!urls.length) { sel.innerHTML = '<option>No sites scanned yet</option>'; return; }
+    sel.innerHTML = urls.map(u => `<option value="${esc(u)}">${esc(new URL(u).hostname)}</option>`).join('');
+    sel.addEventListener('change', () => {
+      const s = scans.find(sc => sc.url === sel.value);
+      if (s) { currentScan = s; renderHome(); if (s.report_id) loadReport(s.report_id); }
+    });
+  }
+
+  // ── Home ───────────────────────────────────────────────────────────────────
+  function renderHome() {
+    const container = document.getElementById('home-scans');
+    if (!scans.length) {
+      container.innerHTML = '<div class="empty-state"><h2>No scans yet</h2><p>Scan your first site below to see your AI visibility score.</p></div>';
+      return;
+    }
+    // Group by URL, show latest per URL
+    const byUrl = {};
+    scans.forEach(s => { if (!byUrl[s.url]) byUrl[s.url] = []; byUrl[s.url].push(s); });
+    container.innerHTML = Object.entries(byUrl).map(([url, urlScans]) => {
+      const latest = urlScans[0];
+      const prev   = urlScans[1];
+      const delta  = prev && latest.score != null && prev.score != null ? latest.score - prev.score : null;
+      const gradeClass = `grade-${latest.grade ?? 'F'}`;
+      const deltaHtml = delta != null
+        ? `<div class="grade-delta ${delta < 0 ? 'down' : ''}">${delta >= 0 ? '↑' : '↓'} Grade ${delta >= 0 ? 'improved' : 'dropped'} ${Math.abs(delta)} pts from last scan</div>`
+        : '';
+      const hostname  = safeHostname(url);
+      const dateStr   = latest.created_at ? new Date(latest.created_at * 1000).toLocaleDateString() : '';
+      const tierLabel = latest.tier ? ` · ${latest.tier.charAt(0).toUpperCase() + latest.tier.slice(1)} Report` : ' · Free scan';
+      const fixedBadge = latest.fixed_at ? `<span class="fixed-badge">Fixed ✓</span>` : '';
+
+      // Grade sparkline: up to 5 most recent scans for this URL
+      const sparkData = urlScans.slice(0, 5).reverse();
+      const sparkline  = sparkData.length >= 2 ? buildSparkline(sparkData) : '';
+
+      const markFixedBtn = latest.report_id && !latest.fixed_at
+        ? `<button class="btn-sm js-mark-fixed" data-scan-id="${esc(latest.id)}">Mark as fixed</button>`
+        : '';
+
+      return `
+        <div class="scan-card">
+          <div class="grade-badge ${gradeClass}">${esc(latest.grade ?? 'F')}</div>
+          <div class="scan-card-info">
+            <div class="scan-url">${esc(hostname)} ${fixedBadge}</div>
+            <div class="scan-meta">Scanned ${dateStr}${tierLabel}</div>
+            ${deltaHtml}
+            ${sparkline}
+          </div>
+          <div class="scan-actions">
+            ${latest.report_id ? `<a class="btn-sm" href="/report.html?id=${esc(latest.report_id)}">Report →</a>` : ''}
+            ${markFixedBtn}
+            <button class="btn-sm js-rescan" data-scan-id="${esc(latest.id)}">Re-scan</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const quota = getDailyScansUsed();
+    document.getElementById('scan-quota').textContent = `${quota}/3 free scans used today`;
+  }
+
+  function getDailyScansUsed() {
+    const today = new Date().toDateString();
+    return scans.filter(s => new Date(s.created_at * 1000).toDateString() === today).length;
+  }
+
+  function buildSparkline(scanHistory) {
+    // scanHistory: array of scans ordered oldest→newest, max 5
+    const GRADE_PTS = { A: 95, B: 80, C: 65, D: 45, F: 20 };
+    const pts = scanHistory.map(s => GRADE_PTS[s.grade] ?? (s.score ?? 50));
+    if (pts.length < 2) return '';
+    const W = 60, H = 20, PAD = 2;
+    const min = Math.min(...pts) - 5;
+    const max = Math.max(...pts) + 5;
+    const xStep = (W - PAD * 2) / (pts.length - 1);
+    const toY   = v => PAD + (H - PAD * 2) * (1 - (v - min) / (max - min));
+    const points = pts.map((v, i) => `${PAD + i * xStep},${toY(v).toFixed(1)}`).join(' ');
+    const trend  = pts[pts.length - 1] > pts[0] ? 'up' : pts[pts.length - 1] < pts[0] ? 'down' : 'flat';
+    const color  = trend === 'up' ? 'var(--pass)' : trend === 'down' ? 'var(--fail)' : 'var(--muted)';
+    return `<svg class="grade-sparkline" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">
+      <polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+  }
+
+  // Mark as fixed handler
+  document.getElementById('home-scans').addEventListener('click', async (e) => {
+    const fixBtn = e.target.closest('.js-mark-fixed');
+    if (!fixBtn) return;
+    const scanId = fixBtn.dataset.scanId;
+    fixBtn.disabled = true;
+    fixBtn.textContent = 'Marking…';
+    try {
+      const res = await fetch(`/api/scans/${encodeURIComponent(scanId)}/mark-fixed`, { method: 'POST' });
+      if (!res.ok) throw new Error();
+      showToast('Marked as fixed. Re-scanning to confirm grade improvement…');
+      // Trigger rescan to show grade delta
+      const scan = scans.find(s => s.id === scanId);
+      if (scan) await rescanById(scanId, scan.url, null);
+    } catch {
+      showToast('Could not mark as fixed. Please try again.', 'error');
+      fixBtn.disabled = false;
+      fixBtn.textContent = 'Mark as fixed';
+    }
+  });
+
+  // ── Report loading ─────────────────────────────────────────────────────────
+  async function loadReport(reportId) {
+    if (!reportId) return;
+    try {
+      const res = await fetch(`/api/report/${reportId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      currentReport = data;
+      renderSignals();
+      renderAiView();
+      renderPrompts();
+      renderCompetitors();
+      renderCitations();
+      renderFixes();
+      renderDeploy();
+    } catch { /* non-critical */ }
+  }
+
+  // ── Signals ────────────────────────────────────────────────────────────────
+  function renderSignals() {
+    const signals = currentScan?.signals ?? {};
+    const container = document.getElementById('signals-content');
+    if (!Object.keys(signals).length) {
+      container.innerHTML = '<p style="color:var(--muted);font-size:14px">No signal data available. Run a scan first.</p>';
+      return;
+    }
+    const SIGNAL_LABELS = { prerender:'AI can read your site', robots:'Search rules are set', schema:'AI knows what you sell', llmstxt:'AI summary is in place', content:'Content answers questions', eeat:'Business credibility signals', metadata:'Pages are described clearly' };
+    const SIGNAL_LABELS_FAIL = { prerender:"AI can't read your site", robots:'Search rules are missing', schema:"AI doesn't know what you sell", llmstxt:'AI summary is missing', content:"Content doesn't answer questions", eeat:'Business credibility is missing', metadata:"Pages aren't described clearly" };
+    const rows = Object.entries(signals).map(([key, sig]) => {
+      const score = sig?.score ?? 0;
+      const status = score >= 8 ? 'pass' : score >= 4 ? 'warn' : 'fail';
+      const label  = status === 'pass' ? 'Pass' : status === 'warn' ? 'Warning' : 'Fail';
+      const detail = sig?.detail ?? '';
+      const sigLabel = status === 'pass'
+        ? (SIGNAL_LABELS[key] ?? key)
+        : (SIGNAL_LABELS_FAIL[key] ?? SIGNAL_LABELS[key] ?? key);
+      return `<tr>
+        <td><strong>${esc(sigLabel)}</strong></td>
+        <td><span class="signal-status status-${status}">${label}</span></td>
+        <td>${esc(score)}/10</td>
+        <td style="max-width:380px;font-size:13px;color:var(--muted)">${esc(detail)}</td>
+      </tr>`;
+    }).join('');
+    container.innerHTML = `
+      <table class="signals-table">
+        <thead><tr><th>Signal</th><th>Status</th><th>Score</th><th>Detail</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  // ── AI View ────────────────────────────────────────────────────────────────
+  function renderAiView() {
+    const report = currentReport?.report;
+    const container = document.getElementById('aiview-content');
+    if (!report?.agentView) {
+      container.innerHTML = '<p style="color:var(--muted);font-size:14px">AI View data unavailable. This is generated for Full Report tier.</p>';
+      return;
+    }
+    const av = report.agentView;
+    const vis = currentScan?.signals?.prerender;
+    const pct = vis?.visibilityPct ?? 0;
+    const barClass = pct < 40 ? 'low' : pct < 70 ? 'mid' : '';
+    container.innerHTML = `
+      <div class="visibility-bar">
+        <h3>Content visibility: ${pct}%</h3>
+        <div class="bar-track"><div class="bar-fill ${barClass}" style="width:${pct}%"></div></div>
+        <p class="visibility-label">AI crawlers can read ${pct}% of your content. Humans see 100%.</p>
+      </div>
+      <div class="ai-view-grid">
+        <div class="ai-view-panel">
+          <div class="ai-view-header">🤖 What AI reads (bot view)</div>
+          <div class="ai-view-body">${esc(av.botText ?? '').slice(0, 3000)}</div>
+        </div>
+        <div class="ai-view-panel">
+          <div class="ai-view-header">👁 What humans see</div>
+          <div class="ai-view-body">${esc(av.humanText ?? '').slice(0, 3000)}</div>
+        </div>
+      </div>`;
+  }
+
+  // ── Prompts ────────────────────────────────────────────────────────────────
+  function renderPrompts() {
+    const report = currentReport?.report;
+    const container = document.getElementById('prompts-content');
+    const prompts = report?.prompts ?? [];
+    if (!prompts.length) {
+      container.innerHTML = '<p style="color:var(--muted);font-size:14px">No prompts generated yet. Full Report generates 12 prompts across 5 intent categories.</p>';
+      return;
+    }
+    const PROVIDERS = [
+      { key: 'perplexity', label: 'Perplexity', cls: 'perplexity', locked: false },
+      { key: 'chatgpt',    label: 'ChatGPT',    cls: 'chatgpt',    locked: !tierGte('report') },
+      { key: 'gemini',     label: 'Gemini',     cls: 'gemini',     locked: !tierGte('report') },
+    ];
+    const citations = report?.citations ?? {};
+    const items = (Array.isArray(prompts) ? prompts : (prompts.prompts ?? [])).slice(0, tierGte('report') ? 12 : 3);
+    container.innerHTML = `
+      <div class="prompt-list">
+        ${items.map(p => {
+          const q = typeof p === 'string' ? p : (p.prompt ?? p.text ?? JSON.stringify(p));
+          const provRows = PROVIDERS.map(prov => {
+            if (prov.locked) {
+              return `<div class="provider-row">
+                <div class="provider-icon ${prov.cls}">${prov.label[0]}</div>
+                <div class="provider-result provider-missing">${prov.label}</div>
+                <a href="/?upgrade=1" class="provider-locked">Upgrade to unlock</a>
+              </div>`;
+            }
+            const cited = citations[prov.key]?.cited ?? false;
+            return `<div class="provider-row">
+              <div class="provider-icon ${prov.cls}">${prov.label[0]}</div>
+              <div class="provider-result ${cited ? 'provider-cited' : 'provider-missing'}">
+                ${cited ? '✓ You were cited' : '✗ Not mentioned'}
+              </div>
+            </div>`;
+          }).join('');
+          return `<div class="prompt-card">
+            <div class="prompt-q">"${esc(q)}"</div>
+            <div class="prompt-providers">${provRows}</div>
+          </div>`;
+        }).join('')}
+        ${!tierGte('report') && prompts.length > 3 ? `<p style="text-align:center;color:var(--muted);font-size:13px;padding:16px">+ ${prompts.length - 3} more prompts in Full Report</p>` : ''}
+      </div>`;
+  }
+
+  // ── Competitors ────────────────────────────────────────────────────────────
+  function renderCompetitors() {
+    const report = currentReport?.report;
+    const container = document.getElementById('competitors-content');
+    const cits = report?.citations;
+    if (!cits) {
+      container.innerHTML = '<p style="color:var(--muted);font-size:14px">Competitor data is generated when we check which sites appear for your prompts.</p>';
+      return;
+    }
+    const competitors = cits.competitors ?? [];
+    if (!competitors.length) {
+      container.innerHTML = '<div class="empty-state"><h2>No competitors found</h2><p>No other sites were cited for your prompts. That\'s unusual — it may mean your topic area has very little AI coverage.</p></div>';
+      return;
+    }
+    container.innerHTML = `
+      <p style="font-size:14px;color:var(--muted);margin-bottom:20px">These sites appear in AI answers for your prompts instead of you:</p>
+      <div class="competitor-list">
+        ${competitors.map((c, i) => `
+          <div class="competitor-row">
+            <div class="competitor-rank">${i + 1}</div>
+            <div class="competitor-domain">${esc(c.domain ?? c)}</div>
+            <div class="competitor-count">${c.count ? `appears in ${c.count} prompts` : ''}</div>
+          </div>
+        `).join('')}
+      </div>`;
+  }
+
+  // ── Citations ──────────────────────────────────────────────────────────────
+  function renderCitations() {
+    const report = currentReport?.report;
+    const container = document.getElementById('citations-content');
+    const cits = report?.citations;
+    if (!cits) {
+      container.innerHTML = '<p style="color:var(--muted);font-size:14px">Citation data unavailable.</p>';
+      return;
+    }
+    const yours     = cits.yourSources ?? [];
+    const theirs    = cits.competitorSources ?? [];
+    container.innerHTML = `
+      <div class="citation-section">
+        <h3>Sources that cite you</h3>
+        ${yours.length ? yours.map(s => `
+          <div class="citation-row">
+            <a class="citation-url" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a>
+            <span class="citation-count">${s.count ?? ''} citation${s.count !== 1 ? 's' : ''}</span>
+          </div>`).join('') : '<p style="color:var(--muted);font-size:13px">No sources citing you found in checked prompts.</p>'}
+      </div>
+      <div class="citation-section">
+        <h3>Sources citing competitors instead</h3>
+        ${theirs.length ? theirs.map(s => `
+          <div class="citation-row">
+            <a class="citation-url" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a>
+            <span class="citation-count">${s.count ?? ''} citation${s.count !== 1 ? 's' : ''}</span>
+          </div>`).join('') : '<p style="color:var(--muted);font-size:13px">No competitor sources detected.</p>'}
+      </div>`;
+  }
+
+  // ── Fixes ──────────────────────────────────────────────────────────────────
+  function renderFixes() {
+    const container = document.getElementById('fixes-content');
+    if (!tierGte('report')) {
+      container.innerHTML = `
+        <div class="deploy-card">
+          <h2>Copy-paste fixes</h2>
+          <p>Get exact schema markup, robots.txt edits, meta tags, and llms.txt — ready to paste into your codebase.</p>
+          <div class="deploy-price">$79 <span>one-time</span></div>
+          <ul class="deploy-items">
+            <li>12 prompts you should be winning</li>
+            <li>Schema JSON-LD snippet for your site</li>
+            <li>robots.txt fix (if AI is blocked)</li>
+            <li>Generated llms.txt file</li>
+            <li>PDF report download</li>
+          </ul>
+          <a href="/?upgrade=1" class="btn-deploy">Get Full Report — $79 →</a>
+        </div>`;
+      return;
+    }
+    const report = currentReport?.report;
+    const fixes = report?.fixes ?? [];
+    if (!fixes.length) {
+      container.innerHTML = '<p style="color:var(--muted);font-size:14px">No fixes generated yet.</p>';
+      return;
+    }
+    container.innerHTML = `<div class="fixes-list">${fixes.map(f => `
+      <div class="fix-card">
+        <div class="fix-header">
+          <span class="signal-status status-fail">Fix</span>
+          <span class="fix-title">${esc(f.title ?? f.signal ?? '')}</span>
+        </div>
+        <div class="fix-body">
+          <p style="font-size:14px;margin-bottom:8px">${esc(f.description ?? '')}</p>
+          ${f.code ? `<div class="fix-code">${esc(f.code)}</div>` : ''}
+        </div>
+      </div>`).join('')}</div>`;
+  }
+
+  // ── Deploy ─────────────────────────────────────────────────────────────────
+  function renderDeploy() {
+    const container = document.getElementById('deploy-content');
+    if (!tierGte('deploy')) {
+      const isReport = tierGte('report');
+      container.innerHTML = `
+        <div class="deploy-card">
+          <h2>1-click GitHub deploy</h2>
+          <p>We open a pull request on your repo with all fixes committed. You review and merge. Your grade improves.</p>
+          <div class="deploy-price">${isReport ? '$70 <span>add-on</span>' : '$149 <span>one-time</span>'}</div>
+          <ul class="deploy-items">
+            <li>vite-ssg / static prerender config</li>
+            <li>llms.txt committed to repo root</li>
+            <li>Organization schema in HTML</li>
+            <li>robots.txt updated for AI crawlers</li>
+          </ul>
+          <a href="/?upgrade=deploy" class="btn-deploy">${isReport ? 'Add GitHub deploy — $70 →' : 'Get Report + Deploy — $149 →'}</a>
+        </div>`;
+      return;
+    }
+    // Already paid for deploy — show the GitHub connect flow
+    container.innerHTML = `
+      <div class="deploy-card">
+        <h2>Deploy fixes to GitHub</h2>
+        <p>Connect your GitHub repository and we'll open a PR with all fixes applied.</p>
+        <a href="/api/github/auth" class="btn-deploy">Connect GitHub →</a>
+      </div>`;
+  }
+
+  // ── Settings helpers ───────────────────────────────────────────────────────
+  async function loadBrandSettings() {
+    try {
+      const res = await fetch('/api/settings/brand');
+      if (!res.ok) return;
+      const s = await res.json();
+      document.getElementById('brand-name').value  = s.name ?? '';
+      document.getElementById('brand-domain').value = s.domain ?? '';
+      document.getElementById('brand-desc').value  = s.description ?? '';
+      document.getElementById('notify-weekly').checked  = s.notifyWeekly;
+      document.getElementById('notify-grade').checked   = s.notifyGrade;
+      document.getElementById('notify-product').checked = s.notifyProduct;
+      // Billing stats
+      const since = me?.createdAt ? new Date(me.createdAt * 1000).toLocaleDateString() : '—';
+      document.getElementById('billing-since').textContent = since;
+    } catch { /* non-critical */ }
+  }
+
+  document.getElementById('brand-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await fetch('/api/settings/brand', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:        document.getElementById('brand-name').value,
+        domain:      document.getElementById('brand-domain').value,
+        description: document.getElementById('brand-desc').value,
+      }),
+    });
+    showToast('Brand settings saved.');
+  });
+
+  function saveNotifications() {
+    fetch('/api/settings/brand', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        notifyWeekly:  document.getElementById('notify-weekly').checked,
+        notifyGrade:   document.getElementById('notify-grade').checked,
+        notifyProduct: document.getElementById('notify-product').checked,
+      }),
+    }).then(() => showToast('Notification preferences saved.'));
+  }
+
+  function saveProviders() {
+    const providers = [];
+    if (document.querySelector('#opt-perplexity input').checked) providers.push('perplexity');
+    if (document.querySelector('#opt-gemini input').checked)     providers.push('gemini');
+    fetch('/api/settings/brand', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ providers }),
+    }).then(() => showToast('Provider settings saved.'));
+  }
+
+  // ── Navigation ─────────────────────────────────────────────────────────────
+  function showSection(section, settingsTab) {
+    document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById(`pane-${section}`)?.classList.add('active');
+    document.querySelector(`.nav-item[data-section="${section}"]`)?.classList.add('active');
+
+    const titles = { home:'Dashboard', signals:'Signals', aiview:'AI View', prompts:'Prompts', competitors:'Competitors', citations:'Citations', fixes:'Fixes', deploy:'Deploy', settings:'Settings' };
+    document.getElementById('header-title').textContent = titles[section] ?? 'Dashboard';
+    document.getElementById('header-sub').textContent = currentScan ? safeHostname(currentScan.url) : '';
+    document.getElementById('rescan-btn').style.display = ['home','signals','aiview','prompts'].includes(section) ? 'block' : 'none';
+
+    if (section === 'settings' && settingsTab) switchSettingsTab(settingsTab);
+  }
+
+  function switchSettingsTab(tab) {
+    document.querySelectorAll('.settings-tab').forEach(t => t.classList.toggle('active', t.dataset.stab === tab));
+    document.querySelectorAll('.settings-pane').forEach(p => p.classList.toggle('active', p.id === `stab-${tab}`));
+  }
+
+  document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
+    btn.addEventListener('click', () => showSection(btn.dataset.section, btn.dataset.settingsTab));
+  });
+  document.querySelectorAll('.settings-tab').forEach(btn => {
+    btn.addEventListener('click', () => switchSettingsTab(btn.dataset.stab));
+  });
+
+  // ── Scan actions ───────────────────────────────────────────────────────────
+  async function submitNewScan() {
+    const url = document.getElementById('new-scan-url').value.trim();
+    if (!url) return;
+    if (getDailyScansUsed() >= 3 && !tierGte('snapshot')) {
+      showToast('Daily free scan limit reached. Upgrade for unlimited scans.', 'error');
+      return;
+    }
+    window.location.href = `/?url=${encodeURIComponent(url)}`;
+  }
+
+  // Delegate rescan clicks via data attribute (avoids onclick + single-quote injection)
+  document.getElementById('home-scans').addEventListener('click', (e) => {
+    const btn = e.target.closest('.js-rescan');
+    if (!btn) return;
+    const scanId = btn.dataset.scanId;
+    const scan   = scans.find(s => s.id === scanId);
+    if (scan) rescanById(scanId, scan.url, btn);
+  });
+
+  async function rescanById(scanId, url, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Scanning…'; }
+    try {
+      const res = await fetch(`/api/rescan/${encodeURIComponent(scanId)}`, { method: 'POST' });
+      if (!res.ok) throw new Error('Rescan failed');
+      const data = await res.json();
+      showToast(`Re-scan complete. Grade: ${data.grade} (${data.gradeDelta >= 0 ? '+' : ''}${data.gradeDelta} pts)`);
+      const scansRes = await fetch('/api/scans');
+      scans = (await scansRes.json()).scans ?? [];
+      renderHome();
+      renderSiteSelector();
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Re-scan'; }
+    }
+  }
+
+  function triggerRescan() {
+    if (currentScan) rescanById(currentScan.id, currentScan.url, null);
+  }
+
+  // ── Prompt monitoring slots ────────────────────────────────────────────────
+
+  async function loadPromptSlots() {
+    const listEl = document.getElementById('prompt-slots-list');
+    if (!listEl) return;
+    try {
+      const res = await fetch('/api/prompts', { credentials: 'include' });
+      if (!res.ok) return;
+      const { prompts } = await res.json();
+      listEl.innerHTML = prompts.length
+        ? prompts.map(p => `
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.prompt)}</span>
+              <button class="btn-sm js-delete-prompt" data-prompt-id="${esc(p.id)}" style="flex-shrink:0;color:var(--fail);border-color:var(--fail)">Remove</button>
+            </div>`).join('')
+        : '<p style="font-size:13px;color:var(--muted)">No prompts added yet.</p>';
+    } catch { /* non-critical */ }
+  }
+
+  async function addPromptSlot() {
+    const input   = document.getElementById('new-prompt-input');
+    const msgEl   = document.getElementById('prompt-slot-msg');
+    const prompt  = input?.value?.trim() ?? '';
+    if (!prompt) return;
+    msgEl.textContent = '';
+    try {
+      const res = await fetch('/api/prompts', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }), credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) { msgEl.style.color = 'var(--fail)'; msgEl.textContent = data.error ?? 'Failed'; return; }
+      input.value = '';
+      msgEl.style.color = 'var(--pass)'; msgEl.textContent = 'Prompt added.';
+      loadPromptSlots();
+    } catch { msgEl.style.color = 'var(--fail)'; msgEl.textContent = 'Request failed.'; }
+  }
+
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.js-delete-prompt');
+    if (!btn) return;
+    btn.disabled = true;
+    await fetch(`/api/prompts/${encodeURIComponent(btn.dataset.promptId)}`, { method: 'DELETE', credentials: 'include' });
+    loadPromptSlots();
+  });
+
+  // ── Competitor comparison ───────────────────────────────────────────────────
+
+  function initCompareSection() {
+    const isMon = me?.tier === 'monitor';
+    document.getElementById('compare-gate')?.style && (document.getElementById('compare-gate').style.display = isMon ? 'none' : 'block');
+    document.getElementById('compare-form').style.display = isMon ? 'block' : 'none';
+  }
+
+  async function runComparison() {
+    const urlA  = document.getElementById('compare-url-a')?.value?.trim() ?? '';
+    const urlB  = document.getElementById('compare-url-b')?.value?.trim() ?? '';
+    const btn   = document.getElementById('compare-btn');
+    const resEl = document.getElementById('compare-result');
+    if (!urlA || !urlB) { showToast('Enter both URLs to compare.', 'error'); return; }
+    btn.disabled = true; btn.textContent = 'Comparing…';
+    resEl.innerHTML = '';
+    try {
+      const res = await fetch('/api/compare', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urlA, urlB }), credentials: 'include',
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Comparison failed'); }
+      const data = await res.json();
+      resEl.innerHTML = renderComparisonResult(data);
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Compare →';
+    }
+  }
+
+  function renderComparisonResult({ urlA, urlB, gradeA, scoreA, signalsA, gradeB, scoreB, signalsB }) {
+    const SIG = { prerender:'AI Rendering', robots:'Robots.txt', schema:'Structured Data', llmstxt:'llms.txt', content:'Content', eeat:'E-E-A-T', metadata:'Metadata' };
+    const hostA = (() => { try { return new URL(urlA).hostname; } catch { return urlA; } })();
+    const hostB = (() => { try { return new URL(urlB).hostname; } catch { return urlB; } })();
+    const rows = Object.keys(SIG).map(key => {
+      const sA = signalsA?.[key]; const sB = signalsB?.[key];
+      const stA = !sA ? '' : sA.score >= 8 ? 'pass' : sA.score > 0 ? 'warn' : 'fail';
+      const stB = !sB ? '' : sB.score >= 8 ? 'pass' : sB.score > 0 ? 'warn' : 'fail';
+      const icon = s => s === 'pass' ? '✓' : s === 'warn' ? '!' : '✗';
+      return `<tr>
+        <td style="padding:10px 12px;font-size:13px;border-bottom:1px solid var(--border)">${SIG[key]}</td>
+        <td style="padding:10px 12px;font-size:13px;border-bottom:1px solid var(--border);color:var(--color-${stA || 'muted'})">${icon(stA)} ${sA?.score ?? '—'}/10</td>
+        <td style="padding:10px 12px;font-size:13px;border-bottom:1px solid var(--border);color:var(--color-${stB || 'muted'})">${icon(stB)} ${sB?.score ?? '—'}/10</td>
+      </tr>`;
+    }).join('');
+    return `<table style="width:100%;border-collapse:collapse;margin-top:16px;border:1px solid var(--border);border-radius:6px;overflow:hidden">
+      <thead><tr style="background:var(--sidebar-bg)">
+        <th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Signal</th>
+        <th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:600;color:var(--muted)">${esc(hostA)} <span style="font-family:Georgia,serif;font-size:18px;font-weight:700">${esc(gradeA)}</span></th>
+        <th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:600;color:var(--muted)">${esc(hostB)} <span style="font-family:Georgia,serif;font-size:18px;font-weight:700">${esc(gradeB)}</span></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+
+  // ── Utils ──────────────────────────────────────────────────────────────────
+  function esc(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function safeHostname(url) {
+    try { return new URL(url).hostname; } catch { return url; }
+  }
+  function showToast(msg, type = 'info') {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    Object.assign(t.style, {
+      position:'fixed', bottom:'24px', right:'24px', padding:'12px 18px',
+      background: type === 'error' ? '#fee2e2' : '#f0fdf4',
+      color: type === 'error' ? '#991b1b' : '#166534',
+      border: `1px solid ${type === 'error' ? '#fecaca' : '#bbf7d0'}`,
+      borderRadius:'6px', fontSize:'14px', zIndex:'9999', maxWidth:'320px',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+    });
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+  }
+
+  init();
+</script>
+</body>
+</html>

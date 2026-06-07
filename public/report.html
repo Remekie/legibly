@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Legibly — AI Visibility Report</title>
+  <title>BlindGEO — AI Visibility Report</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -12,7 +12,7 @@
 <body class="dash-body">
 
   <header class="dash-header">
-    <a href="/" class="dash-brand">legibly</a>
+    <a href="/" class="dash-brand">BlindGEO</a>
     <span class="dash-domain" id="dash-domain"></span>
     <a href="/" class="dash-new-scan">New scan →</a>
   </header>
@@ -90,13 +90,22 @@ document.addEventListener('click', e => {
 
 // ── Signal labels / tooltips ──────────────────────────────────────────────────
 const SIGNAL_LABELS = {
-  prerender: 'AI crawler rendering',
-  robots:    'Crawler access',
-  schema:    'Structured data',
-  llmstxt:   'llms.txt file',
-  content:   'Answer-first content',
-  eeat:      'Brand trust signals',
-  metadata:  'Page metadata',
+  prerender: 'AI can read your site',
+  robots:    'Search rules are set',
+  schema:    'AI knows what you sell',
+  llmstxt:   'AI summary is in place',
+  content:   'Content answers questions',
+  eeat:      'Business credibility signals',
+  metadata:  'Pages are described clearly',
+};
+const SIGNAL_LABELS_FAIL = {
+  prerender: "AI can't read your site",
+  robots:    'Search rules are missing',
+  schema:    "AI doesn't know what you sell",
+  llmstxt:   'AI summary is missing',
+  content:   "Content doesn't answer questions",
+  eeat:      'Business credibility is missing',
+  metadata:  "Pages aren't described clearly",
 };
 const FIX_HINTS = {
   prerender: 'Add a pre-rendering step so AI crawlers receive real HTML, not a JavaScript shell.',
@@ -129,13 +138,16 @@ function renderOverview(data) {
         <span class="dash-signal-detail">Available in full report</span>
       </li>`;
     const status = s.score === 0 ? 'fail' : s.score >= 8 ? 'pass' : 'partial';
-    const icon = status === 'pass' ? '✓' : status === 'fail' ? '✗' : '!';
+    const icon   = status === 'pass' ? '✓' : status === 'fail' ? '✗' : '!';
+    const label  = status === 'pass'
+      ? (SIGNAL_LABELS[key] ?? key)
+      : (SIGNAL_LABELS_FAIL[key] ?? SIGNAL_LABELS[key] ?? key);
     const hint = (status !== 'pass' && FIX_HINTS[key])
-      ? `<span class="dash-signal-hint">${esc(FIX_HINTS[key])}</span>` : '';
+      ? `<span class="dash-signal-hint">→ ${esc(FIX_HINTS[key])}</span>` : '';
     return `
       <li class="dash-signal dash-signal--${status}">
         <span class="dash-signal-icon" aria-hidden="true">${icon}</span>
-        <span class="dash-signal-label">${esc(SIGNAL_LABELS[key] ?? key)}</span>
+        <span class="dash-signal-label">${esc(label)}</span>
         <span class="dash-signal-detail">${esc(s.detail ?? '')}</span>
         ${hint}
       </li>`;
@@ -273,13 +285,46 @@ function renderPrompts(data) {
         </div>` : ''}`;
   }
 
+  // Provider coverage section (locked for non-report tiers)
+  const providerHtml = `
+    <hr class="dash-divider">
+    <h2 class="dash-section-title">AI Provider Coverage</h2>
+    <p class="dash-section-sub">Which AI engines cite your site when answering these prompts.</p>
+    <div class="provider-coverage-grid">
+      <div class="provider-coverage-row${hasPaidTier('report') ? '' : ''}">
+        <div class="provider-coverage-icon provider-perplexity">P</div>
+        <div class="provider-coverage-info">
+          <div class="provider-coverage-name">Perplexity</div>
+          <div class="provider-coverage-sub">Perplexity AI with web search</div>
+        </div>
+        <div class="provider-coverage-result">${citations ? `${citations.promptsAppearing ?? 0}/${citations.promptsTested ?? 0} prompts` : 'Checked'}</div>
+      </div>
+      <div class="provider-coverage-row provider-locked">
+        <div class="provider-coverage-icon provider-chatgpt">C</div>
+        <div class="provider-coverage-info">
+          <div class="provider-coverage-name">ChatGPT</div>
+          <div class="provider-coverage-sub">OpenAI GPT with web search</div>
+        </div>
+        <a href="/?upgrade=1" class="provider-upgrade-badge">Upgrade to unlock</a>
+      </div>
+      <div class="provider-coverage-row provider-locked">
+        <div class="provider-coverage-icon provider-gemini">G</div>
+        <div class="provider-coverage-info">
+          <div class="provider-coverage-name">Google Gemini</div>
+          <div class="provider-coverage-sub">Gemini with Google Search grounding</div>
+        </div>
+        <a href="/?upgrade=1" class="provider-upgrade-badge">Upgrade to unlock</a>
+      </div>
+    </div>`;
+
   if (!promptGroups && !citationHtml) return `<p style="color:var(--color-muted);padding:2rem 0">Prompts not generated — ANTHROPIC_API_KEY may not be set.</p>`;
 
   return `
     <h2 class="dash-section-title">Prompts This Page Should Be Winning</h2>
     <p class="dash-section-sub">Real queries people type into ChatGPT and Perplexity where your site should appear.</p>
     ${promptGroups}
-    ${citationHtml}`;
+    ${citationHtml}
+    ${providerHtml}`;
 }
 
 function renderFixes(data) {
@@ -355,19 +400,66 @@ function renderFixes(data) {
       </div>
     </div>` : '';
 
+  // Lovable/Bolt/v0 snippets — paste-ready prompts for AI builders
+  const snippets = data.report?.lovableSnippets ?? [];
+  const lovableSection = snippets.length ? `
+    <hr class="dash-divider">
+    <h2 class="dash-section-title">Fix in Lovable, Bolt, or v0</h2>
+    <p class="dash-section-sub">Built your site with an AI builder? Paste these prompts directly into your builder's chat to apply each fix automatically — no coding needed.</p>
+    <div class="lovable-snippets">
+      ${snippets.map((s, i) => `
+        <details class="fix-details" ${i === 0 ? 'open' : ''}>
+          <summary>
+            <span class="fix-badge fix-badge--fail">Fix</span>
+            ${esc(s.title)}
+          </summary>
+          <div class="fix-details-body">
+            <p style="font-size:.8125rem;color:var(--color-muted);margin-bottom:.75rem">Copy this prompt and paste it into Lovable, Bolt, or v0 chat:</p>
+            <div class="code-block-wrap">
+              <pre class="code-block" id="lovable-${esc(s.signal)}-${i}">${esc(s.prompt)}</pre>
+              <button class="copy-btn" data-target="lovable-${esc(s.signal)}-${i}">Copy prompt</button>
+            </div>
+          </div>
+        </details>`).join('')}
+    </div>` : '';
+
   return `
     <h2 class="dash-section-title">How to Fix What's Failing</h2>
     <p class="dash-section-sub">Step-by-step instructions for every failing signal. Copy the code snippets and apply them to your site.</p>
     ${signalFixes}
     ${schemaSection}
-    ${llmsSection}`;
+    ${llmsSection}
+    ${lovableSection}`;
+}
+
+// Populated by /api/subscription/status on init — server-authoritative
+let _reportPageTier = null;
+
+function hasPaidTier(tier) {
+  const TIERS = { snapshot: 1, fix: 2, report: 2, monitor: 3, deploy: 4 };
+  if (_reportPageTier) {
+    return (TIERS[_reportPageTier] ?? 0) >= (TIERS[tier] ?? 0);
+  }
+  // Fallback: localStorage (legacy Stripe session or test mode)
+  const raw = localStorage.getItem('legibly_paid');
+  if (!raw) return false;
+  try {
+    const val = JSON.parse(raw);
+    const userTier = (typeof val === 'object' && val?.tier) ? val.tier : null;
+    if (!userTier) return false;
+    return (TIERS[userTier] ?? 0) >= (TIERS[tier] ?? 0);
+  } catch {
+    return false;
+  }
 }
 
 function renderDeploy(data) {
   const githubConnected = !!localStorage.getItem('legibly_github');
-  const url = data.url ?? '';
+  const hasDeployTier   = hasPaidTier('deploy');
+  const hasReportTier   = hasPaidTier('report');
 
-  if (githubConnected) {
+  // Fully paid for deploy — show GitHub connect form
+  if (hasDeployTier && githubConnected) {
     return `
       <h2 class="dash-section-title">Deploy All Fixes to Your Site</h2>
       <p class="dash-section-sub">GitHub connected. Enter your repo URL and Legibly opens a PR with every fix applied — llms.txt, schema, robots.txt, and pre-rendering for Lovable/Vite sites.</p>
@@ -383,12 +475,48 @@ function renderDeploy(data) {
       </div>`;
   }
 
+  if (hasDeployTier) {
+    return `
+      <h2 class="dash-section-title">Connect GitHub to Deploy</h2>
+      <p class="dash-section-sub">You've unlocked GitHub deploy. Connect your repo and we'll open a PR with every fix applied.</p>
+      <div class="deploy-connect">
+        <a href="/api/github/auth" class="btn-primary" style="display:inline-block;text-decoration:none;font-size:.875rem;padding:.75rem 1.5rem">Connect GitHub →</a>
+        <p class="deploy-stacks">Works with: Lovable · Vite · Next.js · Gatsby · Static sites</p>
+      </div>`;
+  }
+
+  // Has Full Report but not Deploy — show $70 add-on upsell
+  if (hasReportTier) {
+    return `
+      <h2 class="dash-section-title">Add GitHub Deploy — $70</h2>
+      <p class="dash-section-sub">You have the Full Report. Add automated deploy: we open a PR on your repo with every fix from this report applied.</p>
+      <div class="deploy-upsell-card">
+        <div class="deploy-upsell-price">$70 <span class="deploy-upsell-sub">add-on to your Full Report</span></div>
+        <ul class="deploy-upsell-items">
+          <li>vite-ssg / static prerender config committed</li>
+          <li>llms.txt added to your repo root</li>
+          <li>Organization schema inserted in HTML</li>
+          <li>robots.txt updated for AI crawlers</li>
+        </ul>
+        <a href="/?upgrade=deploy" class="btn-primary" style="display:inline-block;text-decoration:none;font-size:.875rem;padding:.75rem 1.5rem">Add GitHub deploy — $70 →</a>
+        <p style="margin-top:1rem;font-size:13px;color:var(--color-muted)">Or download the fix files and apply them manually to any platform:</p>
+        <button id="fix-kit-btn" style="margin-top:.5rem;padding:.625rem 1.25rem;background:none;border:1.5px solid var(--color-border);border-radius:5px;font-family:inherit;font-size:.875rem;font-weight:600;cursor:pointer;color:var(--color-text)">Download Fix Kit (ZIP) →</button>
+        <p class="deploy-stacks">Works with: Lovable · Vite · Next.js · Gatsby · Static sites</p>
+      </div>`;
+  }
+
+  // No payment at all
   return `
     <h2 class="dash-section-title">Deploy All Fixes — $149</h2>
-    <p class="dash-section-sub">Connect your GitHub repo. We write a PR with every fix applied. You click merge. Your grade improves. One step.</p>
+    <p class="dash-section-sub">Connect your GitHub repo. We write a PR with every fix applied. You click merge. Your grade improves.</p>
     <div class="deploy-connect">
-      <p class="deploy-price-note">Included: llms.txt, robots.txt, Organization schema, pre-render fix for Lovable/React sites. 30-day follow-up scan confirms your grade improved.</p>
-      <a href="/api/github/auth" class="btn-primary" style="display:inline-block;text-decoration:none;font-size:.875rem;padding:.75rem 1.5rem">Connect GitHub and deploy →</a>
+      <div class="deploy-upsell-price">$149 <span class="deploy-upsell-sub">one-time · includes Full Report</span></div>
+      <ul class="deploy-upsell-items">
+        <li>Full Report with 12 prompts and all fixes</li>
+        <li>GitHub PR with every fix committed</li>
+        <li>30-day follow-up scan confirms grade improved</li>
+      </ul>
+      <a href="/?upgrade=deploy" class="btn-primary" style="display:inline-block;text-decoration:none;font-size:.875rem;padding:.75rem 1.5rem">Get Report + Deploy — $149 →</a>
       <p class="deploy-stacks">Works with: Lovable · Vite · Next.js · Gatsby · Static sites</p>
     </div>`;
 }
@@ -450,19 +578,67 @@ async function deployFixes(scanUrl) {
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
-(function init() {
-  const raw = sessionStorage.getItem('legibly_report');
+(async function init() {
+  const params  = new URLSearchParams(location.search);
+  const reportId = params.get('id');
 
-  function showEmpty() {
+  function showEmpty(msg) {
     document.querySelector('.dash-tabs').style.display = 'none';
-    document.getElementById('pane-empty').classList.add('active');
+    const el = document.getElementById('pane-empty');
+    if (msg) el.querySelector('p').textContent = msg;
+    el.classList.add('active');
   }
 
-  if (!raw) { showEmpty(); return; }
+  function showLoading() {
+    document.querySelector('.dash-tabs').style.display = 'none';
+    const el = document.getElementById('pane-empty');
+    el.innerHTML = '<p style="color:var(--color-muted);padding:4rem 1.5rem;text-align:center">Loading your report…</p>';
+    el.classList.add('active');
+  }
 
   let data;
-  try { data = JSON.parse(raw); } catch { showEmpty(); return; }
-  if (!data || typeof data !== 'object') { showEmpty(); return; }
+
+  if (reportId) {
+    // Fetch from API by ID (new flow — works for all users)
+    showLoading();
+    try {
+      const res = await fetch(`/api/report/${encodeURIComponent(reportId)}`);
+      if (res.status === 403) { showEmpty('This report is private. Sign in to view it.'); return; }
+      if (!res.ok) { showEmpty('Report not found. It may have expired.'); return; }
+      const row = await res.json();
+      // API returns { id, scan_id, tier, report, ... } — merge with report object
+      data = row.report ?? row;
+      data._tier = row.tier ?? null;
+    } catch {
+      showEmpty('Could not load report. Check your connection and try again.');
+      return;
+    }
+  } else {
+    // Legacy: read from sessionStorage (backward compat for existing flow)
+    const raw = sessionStorage.getItem('legibly_report');
+    if (!raw) { showEmpty('No report found. Run a scan first.'); return; }
+    try { data = JSON.parse(raw); } catch { showEmpty('Report data is corrupted.'); return; }
+    if (!data || typeof data !== 'object') { showEmpty('No report found.'); return; }
+  }
+
+  // Fetch server-authoritative tier first, then fall back to report tier
+  try {
+    const subRes = await fetch('/api/subscription/status', { credentials: 'include' });
+    if (subRes.ok) {
+      const subData = await subRes.json();
+      if (subData.tier) _reportPageTier = subData.tier;
+    }
+  } catch { /* unauthenticated or offline */ }
+
+  // Also apply report's own tier (e.g. accessed via direct link without login)
+  const VALID_TIERS = new Set(['snapshot', 'fix', 'report', 'monitor', 'deploy']);
+  const safeTier = VALID_TIERS.has(data._tier) ? data._tier : null;
+  if (safeTier && !_reportPageTier) {
+    _reportPageTier = safeTier;
+  }
+
+  // Restore tab nav
+  document.querySelector('.dash-tabs').style.display = '';
 
   // Set domain in header
   const domain = data.context?.domain ?? safeOrigin(data.url ?? '').replace(/https?:\/\//,'');
@@ -487,7 +663,7 @@ async function deployFixes(scanUrl) {
     try {
       document.getElementById(id).innerHTML = fn();
     } catch(e) {
-      document.getElementById(id).innerHTML = `<p style="color:var(--color-fail);padding:2rem 0">Error rendering this section. Check the browser console.</p>`;
+      document.getElementById(id).innerHTML = `<p style="color:var(--color-fail);padding:2rem 0">Error rendering this section.</p>`;
       console.error('Report render error in', id, e);
     }
   });
@@ -502,6 +678,20 @@ async function deployFixes(scanUrl) {
 
   // Wire deploy button (after render)
   document.getElementById('deploy-btn')?.addEventListener('click', () => deployFixes(data.url ?? ''));
+
+  // Wire fix kit download button
+  document.getElementById('fix-kit-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('fix-kit-btn');
+    btn.disabled = true; btn.textContent = 'Generating…';
+    try {
+      const scanId = data.scanId ?? new URLSearchParams(location.search).get('id');
+      if (!scanId) throw new Error('No scan ID');
+      window.location.href = `/api/fix-kit/${encodeURIComponent(scanId)}`;
+      setTimeout(() => { btn.disabled = false; btn.textContent = 'Download Fix Kit →'; }, 2000);
+    } catch {
+      btn.disabled = false; btn.textContent = 'Download Fix Kit →';
+    }
+  });
 })();
 </script>
 </body>

@@ -50,18 +50,23 @@ export async function checkMetadata(url, html = null, redirectHops = null) {
     if (altFailing)                                                 issues.push('alttext');
     if (redirectChain >= 2)                                         issues.push('redirectchain');
 
+    const pageTitle = (!GENERIC_TITLES.test(title) ? title : null)
+      ?? (!GENERIC_HEADINGS.test(h1Text) ? h1Text : null)
+      ?? null;
+
     if (noindex) {
-      return { score: 0, issues, detail: "This page is telling search and AI engines not to index it. It cannot appear in AI results." };
+      return { score: 0, issues, pageTitle, detail: "This page is telling search and AI engines not to index it. It cannot appear in AI results." };
     }
 
     if (issues.length === 0) {
-      return { score: 10, issues, detail: 'Page metadata complete ✓ — title, description, headings, canonical, and social tags all set correctly' };
+      return { score: 10, issues, pageTitle, detail: 'Page metadata complete ✓ — title, description, headings, canonical, and social tags all set correctly' };
     }
 
     const score = Math.max(0, Math.round(10 - issues.length * 1.25));
     return {
       score,
       issues,
+      pageTitle,
       detail: issues.length <= 2
         ? `${formatIssues(issues)} missing or too generic — AI engines are working with incomplete information about your page.`
         : `Multiple metadata gaps — ${formatIssues(issues)}. AI engines can't fully understand what your page is about.`,
