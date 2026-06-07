@@ -162,9 +162,9 @@ const checkoutLimiter = rateLimit({
 const TIER_PRICES = {
   fix: {
     mode: 'subscription',
-    monthly: { priceId: process.env.STRIPE_PRICE_FIX_MONTHLY,  fallbackCents: 1900, interval: 'month' },
-    annual:  { priceId: process.env.STRIPE_PRICE_FIX_ANNUAL,   fallbackCents: 18000, interval: 'year' },
-    name: 'BlindGEO Fix — $19/mo',
+    monthly: { priceId: process.env.STRIPE_PRICE_FIX_MONTHLY,  fallbackCents: 2900, interval: 'month' },
+    annual:  { priceId: process.env.STRIPE_PRICE_FIX_ANNUAL,   fallbackCents: 27600, interval: 'year' },
+    name: 'BlindGEO Fix — $29/mo',
     description: 'Full audit, GitHub PR, Lovable snippets, weekly re-audit, 10 prompt slots',
   },
   monitor: {
