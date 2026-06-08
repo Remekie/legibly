@@ -46,7 +46,7 @@ const ALLOWED_PROVIDERS = new Set(['perplexity', 'gemini', 'chatgpt', 'aiovervie
 const app = express();
 const PORT = process.env.PORT ?? 3000;
 
-app.set('trust proxy', 1); // trust first proxy (Cloudflare/Railway) for correct client IPs
+app.set('trust proxy', 2); // Cloudflare → Railway edge → Node: 2 hops; prevents IP spoofing on rate limiters
 app.use(helmet());
 app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());

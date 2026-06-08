@@ -975,12 +975,15 @@ async function deployFixes() {
       throw new Error(err.error ?? 'Fix failed');
     }
     const { prUrl, fixCount, stack } = await res.json();
+    // Validate PR URL is a real GitHub URL before inserting into href
+    const safePrUrl = (typeof prUrl === 'string' && /^https:\/\/github\.com\//i.test(prUrl))
+      ? prUrl : '#';
     result.hidden = false;
     result.innerHTML = `
       <div class="deploy-success">
         <strong>PR created — ${fixCount} fix${fixCount !== 1 ? 'es' : ''} applied</strong>
         <span class="deploy-stack">${escapeHtml(stack)} site detected</span>
-        <a href="${escapeHtml(prUrl)}" target="_blank" rel="noopener" class="btn-pr-link">
+        <a href="${escapeHtml(safePrUrl)}" target="_blank" rel="noopener" class="btn-pr-link">
           Review and merge on GitHub →
         </a>
         <p class="deploy-note">After merging, click "Scan free" again to see your improved grade.</p>

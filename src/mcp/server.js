@@ -274,10 +274,12 @@ export function mcpRouter() {
       }
 
       entry.lastSeen = Date.now();
-      // Forward ?key= query param as header so tool handlers can read it
-      // This supports Claude.ai web connector UI which only accepts a URL (no header field)
-      if (req.query.key && !req.headers['x-blindgeo-key']) {
-        req.headers['x-blindgeo-key'] = req.query.key;
+      // Forward ?key= query param as header for Claude.ai web connector UI (no header field)
+      // Sanitize: must be a non-empty string, no newlines, max 120 chars
+      const qKey = req.query.key;
+      if (qKey && !req.headers['x-blindgeo-key']) {
+        const safeKey = String(qKey).replace(/[\r\n]/g, '').slice(0, 120);
+        if (safeKey.length > 0) req.headers['x-blindgeo-key'] = safeKey;
       }
       await entry.transport.handleRequest(req, res, req.body);
     } catch (err) {
