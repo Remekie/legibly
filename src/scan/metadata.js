@@ -62,7 +62,7 @@ export async function checkMetadata(url, html = null, redirectHops = null) {
       return { score: 10, issues, pageTitle, detail: 'Page metadata complete ✓ — title, description, headings, canonical, and social tags all set correctly' };
     }
 
-    const score = Math.max(0, Math.round(10 - issues.length * 1.25));
+    const score = Math.max(0, Math.round(10 - issues.length * 1.5));
     return {
       score,
       issues,

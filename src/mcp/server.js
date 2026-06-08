@@ -147,7 +147,7 @@ function buildMcpServer() {
           return { content: [{ type: 'text', text:
             `⚠️ Free tier limit reached (${FREE_LIMIT} scans/month).\n\n` +
             `Get a BlindGEO API key for unlimited scans:\n${APP_URL}?upgrade=fix\n\n` +
-            `Fix plan ($19/mo) includes unlimited MCP scans, competitor tracking, and weekly monitoring.`
+            `Fix plan ($29/mo) includes unlimited MCP scans, competitor tracking, and weekly monitoring.`
           }]};
         }
         incUsage(ip);
@@ -176,7 +176,7 @@ function buildMcpServer() {
         lines.push(`**${failCount} issue${failCount > 1 ? 's' : ''} blocking AI visibility.**`);
         lines.push(`Get copy-paste fixes: ${APP_URL}?url=${encodeURIComponent(valid)}`);
         if (!authed) {
-          lines.push(`\n_Competitor names + fix generation require a BlindGEO account ($19/mo)._`);
+          lines.push(`\n_Competitor names + fix generation require a BlindGEO account ($29/mo)._`);
         }
       } else {
         lines.push(`✅ ${domain} passes all AI visibility checks.`);
@@ -197,7 +197,7 @@ function buildMcpServer() {
     async ({ scan_id, api_key }) => {
       if (!isValidKey(api_key)) {
         return { content: [{ type: 'text', text:
-          `get_fixes requires a BlindGEO API key.\nGet yours at: ${APP_URL}/dashboard.html\n(Included in Fix plan — $19/mo)`
+          `get_fixes requires a BlindGEO API key.\nGet yours at: ${APP_URL}/dashboard.html\n(Included in Fix plan — $29/mo)`
         }], isError: true };
       }
 
