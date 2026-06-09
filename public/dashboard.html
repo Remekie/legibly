@@ -834,6 +834,29 @@
         <div class="stat-card"><div class="stat-num" id="stat-deploys">—</div><div class="stat-label">Deploys</div></div>
       </div>
       <p style="font-size:13px;color:var(--muted)" id="member-since"></p>
+
+      <hr style="margin:24px 0;border:none;border-top:1px solid var(--border)">
+      <h3 style="font-size:15px;font-weight:600;margin-bottom:6px">MCP API Keys</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
+        Use your API key in Claude Desktop, Claude.ai, or Cursor to get unlimited BlindGEO scans and copy-paste fixes without leaving your AI interface.
+        <a href="https://blindgeo.com/mcp" target="_blank" style="color:var(--ink)">Setup instructions →</a>
+      </p>
+      <div id="api-keys-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+      <div id="api-key-new" hidden style="margin-bottom:16px;padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;font-size:13px">
+        <strong style="display:block;margin-bottom:6px">Your new API key — copy it now, it won't be shown again:</strong>
+        <div style="display:flex;align-items:center;gap:8px">
+          <code id="api-key-value" style="flex:1;font-size:12px;word-break:break-all;background:#fff;padding:8px;border-radius:4px;border:1px solid #bbf7d0"></code>
+          <button onclick="navigator.clipboard.writeText(document.getElementById('api-key-value').textContent).then(()=>this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000))"
+            style="padding:6px 12px;background:var(--ink);color:var(--hi);border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0">Copy</button>
+        </div>
+        <p style="font-size:12px;color:#166534;margin-top:8px">
+          Add to Claude: <code style="background:#fff;padding:2px 6px;border-radius:3px">Settings → Integrations → URL: https://legibly-production.up.railway.app/mcp?key=[your-key]</code>
+        </p>
+      </div>
+      <button class="btn-save" id="generate-key-btn" onclick="generateApiKey()" style="font-size:13px;padding:8px 18px">Generate API key</button>
+      <p id="api-key-msg" style="font-size:12px;margin-top:6px;color:var(--muted)">
+        Requires Fix plan ($29/mo). Max 3 active keys.
+      </p>
     </div>
 
     <!-- Brand -->
@@ -1028,9 +1051,10 @@
       await loadReport(currentScan.report_id);
     }
 
-    // Load brand settings + prompt slots
+    // Load brand settings, prompt slots, and API keys
     loadBrandSettings();
     loadPromptSlots();
+    loadApiKeys();
     initCompareSection();
   }
 
@@ -1241,12 +1265,47 @@
   }
 
   // ── Prompts ────────────────────────────────────────────────────────────────
-  function renderPrompts() {
+  async function renderPrompts() {
     const report = currentReport?.report;
     const container = document.getElementById('prompts-content');
+
+    // Load monitoring results (user-defined prompt slots with live Perplexity data)
+    let monitoringResults = [];
+    try {
+      const res = await fetch('/api/prompts/results', { credentials: 'include' });
+      if (res.ok) monitoringResults = (await res.json()).results ?? [];
+    } catch { /* non-critical */ }
+
+    const monHtml = monitoringResults.length ? `
+      <div style="margin-bottom:24px">
+        <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-size:12px">Your Monitored Prompts</h3>
+        <div class="prompt-list">
+          ${monitoringResults.map(r => `
+            <div class="prompt-card">
+              <div class="prompt-q">"${esc(r.prompt)}"</div>
+              <div class="prompt-providers">
+                <div class="provider-row">
+                  <div class="provider-icon perplexity">P</div>
+                  <div class="provider-result ${r.appeared ? 'provider-cited' : 'provider-missing'}">
+                    ${r.appeared ? '✓ You appeared' : '✗ Not mentioned'}
+                  </div>
+                  ${r.snippet ? `<span style="font-size:11px;color:var(--muted);margin-left:8px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.snippet)}">${esc(r.snippet.slice(0, 60))}…</span>` : ''}
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--muted);padding:4px 16px 8px">
+                Last checked: ${r.checked_at ? new Date(r.checked_at * 1000).toLocaleDateString() : 'Never'}
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>` : '';
+
     const prompts = report?.prompts ?? [];
+    if (!prompts.length && !monitoringResults.length) {
+      container.innerHTML = monHtml + '<p style="color:var(--muted);font-size:14px">No prompts yet. Add prompt monitoring slots in Settings → Providers, or get a Full Report to see AI-generated prompts.</p>';
+      return;
+    }
     if (!prompts.length) {
-      container.innerHTML = '<p style="color:var(--muted);font-size:14px">No prompts generated yet. Full Report generates 12 prompts across 5 intent categories.</p>';
+      container.innerHTML = monHtml;
       return;
     }
     const PROVIDERS = [
@@ -1256,7 +1315,7 @@
     ];
     const citations = report?.citations ?? {};
     const items = (Array.isArray(prompts) ? prompts : (prompts.prompts ?? [])).slice(0, tierGte('report') ? 12 : 3);
-    container.innerHTML = `
+    container.innerHTML = monHtml + `
       <div class="prompt-list">
         ${items.map(p => {
           const q = typeof p === 'string' ? p : (p.prompt ?? p.text ?? JSON.stringify(p));
@@ -1534,6 +1593,60 @@
     if (currentScan) rescanById(currentScan.id, currentScan.url, null);
   }
 
+  // ── MCP API keys ──────────────────────────────────────────────────────────
+
+  async function loadApiKeys() {
+    const listEl = document.getElementById('api-keys-list');
+    if (!listEl) return;
+    try {
+      const res = await fetch('/api/keys', { credentials: 'include' });
+      if (!res.ok) return;
+      const { keys } = await res.json();
+      listEl.innerHTML = keys.length
+        ? keys.map(k => `
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px">
+              <code style="flex:1;color:var(--muted)">bg_${esc(k.key_preview)}…</code>
+              <span style="font-size:11px;color:var(--muted)">Created ${new Date(k.created_at * 1000).toLocaleDateString()}</span>
+              <button class="btn-sm js-revoke-key" data-key-id="${esc(k.id)}" style="color:var(--fail);border-color:var(--fail)">Revoke</button>
+            </div>`).join('')
+        : '<p style="font-size:13px;color:var(--muted)">No API keys yet.</p>';
+    } catch { /* non-critical */ }
+  }
+
+  async function generateApiKey() {
+    const btn    = document.getElementById('generate-key-btn');
+    const msgEl  = document.getElementById('api-key-msg');
+    const newDiv = document.getElementById('api-key-new');
+    const valEl  = document.getElementById('api-key-value');
+    btn.disabled = true; btn.textContent = 'Generating…';
+    msgEl.style.color = 'var(--muted)'; msgEl.textContent = 'Requires Fix plan ($29/mo). Max 3 active keys.';
+    try {
+      const res = await fetch('/api/keys/provision', { method: 'POST', credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) {
+        msgEl.style.color = 'var(--fail)'; msgEl.textContent = data.error ?? 'Failed to generate key';
+        btn.disabled = false; btn.textContent = 'Generate API key';
+        return;
+      }
+      valEl.textContent = data.key;
+      newDiv.hidden = false;
+      btn.textContent = 'Generate another key';
+      btn.disabled = false;
+      loadApiKeys();
+    } catch {
+      msgEl.style.color = 'var(--fail)'; msgEl.textContent = 'Request failed. Please try again.';
+      btn.disabled = false; btn.textContent = 'Generate API key';
+    }
+  }
+
+  document.addEventListener('click', async (e) => {
+    const revokeBtn = e.target.closest('.js-revoke-key');
+    if (!revokeBtn) return;
+    revokeBtn.disabled = true; revokeBtn.textContent = 'Revoking…';
+    await fetch(`/api/keys/${encodeURIComponent(revokeBtn.dataset.keyId)}`, { method: 'DELETE', credentials: 'include' });
+    loadApiKeys();
+  });
+
   // ── Prompt monitoring slots ────────────────────────────────────────────────
 
   async function loadPromptSlots() {
@@ -1638,7 +1751,7 @@
 
   // ── Utils ──────────────────────────────────────────────────────────────────
   function esc(str) {
-    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   }
   function safeHostname(url) {
     try { return new URL(url).hostname; } catch { return url; }

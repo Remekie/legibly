@@ -22,6 +22,7 @@ import { insertPayment, getPaymentBySession, getUserPayments, getHighestTierForU
 import { getBrandSettings, saveBrandSettings } from './db/users.js';
 import { upsertSubscription, getActiveSubscription, cancelSubscription, getHighestActiveTier, getAllActiveSubscribers } from './db/subscriptions.js';
 import { getPromptSlots, addPromptSlot, deletePromptSlot, getAllMonitoringPrompts } from './db/monitoring-prompts.js';
+import { saveMonitoringResult, getLatestResultPerPrompt, getPromptResults } from './db/monitoring-results.js';
 import { saveConnection, getConnection, getUserConnections, deleteConnection } from './db/platform-connections.js';
 import db from './db/index.js';
 
@@ -720,6 +721,42 @@ app.patch('/api/report/:reportId/share', requireAuthJson, (req, res) => {
   res.json({ ok: true });
 });
 
+// ── MCP API keys ─────────────────────────────────────────────────────────────
+
+import { provisionApiKey } from './mcp/server.js';
+
+app.get('/api/keys', requireAuthJson, (req, res) => {
+  const keys = db.prepare(`
+    SELECT id, created_at,
+      substr(key_hash, 1, 8) as key_preview
+    FROM api_keys WHERE user_id = ? AND active = 1
+    ORDER BY created_at DESC
+  `).all(req.user.id);
+  res.json({ keys });
+});
+
+app.post('/api/keys/provision', requireAuthJson, (req, res) => {
+  const tier = getHighestActiveTier(req.user.id);
+  if (!tier || !['fix', 'monitor'].includes(tier)) {
+    return res.status(402).json({ error: 'Fix subscription ($29/mo) required to generate an API key' });
+  }
+  // Limit to 3 active keys per user
+  const count = db.prepare('SELECT COUNT(*) as n FROM api_keys WHERE user_id = ? AND active = 1').get(req.user.id).n;
+  if (count >= 3) {
+    return res.status(400).json({ error: 'Maximum 3 active API keys. Revoke one before generating a new key.' });
+  }
+  const rawKey = provisionApiKey(req.user.id);
+  res.json({ key: rawKey, note: 'Copy this key now — it will not be shown again.' });
+});
+
+app.delete('/api/keys/:keyId', requireAuthJson, (req, res) => {
+  const result = db.prepare(
+    'UPDATE api_keys SET active = 0 WHERE id = ? AND user_id = ?'
+  ).run(req.params.keyId, req.user.id);
+  if (result.changes === 0) return res.status(404).json({ error: 'Key not found' });
+  res.json({ ok: true });
+});
+
 // ── Brand settings ────────────────────────────────────────────────────────────
 
 app.get('/api/settings/brand', requireAuthJson, (req, res) => {
@@ -777,6 +814,11 @@ app.post('/api/prompts', requireAuthJson, async (req, res) => {
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
+});
+
+app.get('/api/prompts/results', requireAuthJson, (req, res) => {
+  const results = getLatestResultPerPrompt(req.user.id);
+  res.json({ results });
 });
 
 app.delete('/api/prompts/:promptId', requireAuthJson, (req, res) => {
@@ -999,12 +1041,15 @@ app.get('/internal/cron/weekly-audit', async (req, res) => {
       const resp = await fetch('https://api.perplexity.ai/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'sonar', messages: [{ role: 'user', content: prompt }], max_tokens: 200 }),
+        body: JSON.stringify({ model: 'sonar', messages: [{ role: 'user', content: prompt }], max_tokens: 300 }),
       });
       if (!resp.ok) return null;
       const data = await resp.json();
       const answer = data.choices?.[0]?.message?.content ?? '';
-      return answer.toLowerCase().includes(domain.toLowerCase());
+      const appeared = answer.toLowerCase().includes(domain.toLowerCase());
+      // Return snippet (first 200 chars of answer) so results are meaningful
+      const snippet = answer.slice(0, 200).trim() || null;
+      return { appeared, snippet };
     } catch { return null; }
   }
 
@@ -1047,13 +1092,22 @@ app.get('/internal/cron/weekly-audit', async (req, res) => {
         emailed++;
       }
 
-      // Check user-defined monitoring prompts
+      // Check user-defined monitoring prompts and store results
       const monPrompts = getPromptSlots(user_id);
       for (const mp of monPrompts) {
         if (!mp.url) continue;
-        const mpDomain = new URL(mp.url).hostname.replace(/^www\./, '');
-        await checkPromptInPerplexity(mp.prompt, mpDomain);
-        // Results stored inline — future: write to monitoring_results table
+        try {
+          const mpDomain = new URL(mp.url).hostname.replace(/^www\./, '');
+          const result = await checkPromptInPerplexity(mp.prompt, mpDomain);
+          if (result !== null) {
+            saveMonitoringResult({
+              promptId: mp.id,
+              userId:   user_id,
+              appeared: result.appeared,
+              snippet:  result.snippet,
+            });
+          }
+        } catch { /* non-critical per-prompt error */ }
       }
     } catch (err) {
       errors++;

@@ -89,6 +89,17 @@ db.exec(`
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
   );
   CREATE INDEX IF NOT EXISTS idx_mon_prompts_user ON monitoring_prompts(user_id);
+
+  CREATE TABLE IF NOT EXISTS monitoring_results (
+    id         TEXT PRIMARY KEY,
+    prompt_id  TEXT NOT NULL REFERENCES monitoring_prompts(id) ON DELETE CASCADE,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    checked_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    appeared   INTEGER NOT NULL DEFAULT 0,
+    snippet    TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_mon_results_prompt ON monitoring_results(prompt_id, checked_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_mon_results_user   ON monitoring_results(user_id, checked_at DESC);
   CREATE INDEX IF NOT EXISTS idx_scans_user ON scans(user_id, created_at DESC);
 
   -- Migration: add fixed_at if not present (safe on existing DBs)
