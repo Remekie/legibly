@@ -83,6 +83,11 @@ const pdfLimiter = rateLimit({
   message: { error: 'PDF generation limit reached. Please wait 5 minutes.' },
 });
 
+app.get('/api/stats', (_req, res) => {
+  const { n } = db.prepare('SELECT COUNT(*) as n FROM scans').get() ?? { n: 0 };
+  res.json({ scans: n });
+});
+
 app.get('/health', async (_req, res) => {
   const { execSync } = await import('child_process');
   let chromiumPath = process.env.CHROMIUM_PATH ?? 'not set';

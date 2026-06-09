@@ -62,7 +62,10 @@ export async function checkMetadata(url, html = null, redirectHops = null) {
       return { score: 10, issues, pageTitle, detail: 'Page metadata complete ✓ — title, description, headings, canonical, and social tags all set correctly' };
     }
 
-    const score = Math.max(0, Math.round(10 - issues.length * 1.5));
+    // Canonical and H1 are weighted higher — structural gaps AI engines penalize heavily
+    const ISSUE_WEIGHTS = { canonical: 2.0, h1: 2.0, og: 1.5, alttext: 1.5 };
+    const penalty = issues.reduce((sum, i) => sum + (ISSUE_WEIGHTS[i] ?? 1.0), 0);
+    const score = Math.max(0, Math.round(10 - penalty));
     return {
       score,
       issues,

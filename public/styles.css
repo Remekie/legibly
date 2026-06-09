@@ -1062,6 +1062,40 @@ button:focus-visible, input:focus-visible {
   color: var(--color-muted);
 }
 
+/* Lead visibility block — the number that hits first */
+.visibility-headline--lead {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .25rem;
+  margin: 0 0 1rem;
+  padding: 1rem 1.25rem;
+  background: rgb(248 113 113 / .06);
+  border-left: 3px solid var(--color-fail);
+  border-radius: 0 4px 4px 0;
+}
+.visibility-pct-big {
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-fail);
+}
+.visibility-pct-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* Grade row — grade + score side by side after the visibility lead */
+.grade-display-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0 .75rem;
+}
+.grade-meta { display: flex; flex-direction: column; gap: .25rem; }
+
 .competitor-hero {
   min-height: 1.75rem;
   margin: .625rem 0 1rem;

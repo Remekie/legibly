@@ -1,3 +1,17 @@
+// Scan counter — fetch real count from DB, show "since [month]" if under 500
+(async () => {
+  const el = document.getElementById('scan-counter');
+  if (!el) return;
+  try {
+    const res = await fetch('/api/stats');
+    if (!res.ok) return;
+    const { scans } = await res.json();
+    el.textContent = scans >= 500
+      ? `${scans.toLocaleString()} sites scanned`
+      : 'Scanning sites since June 2026';
+  } catch { /* non-critical */ }
+})();
+
 const form = document.getElementById('scan-form');
 const urlInput = document.getElementById('url-input');
 const urlError = document.getElementById('url-error');
@@ -301,29 +315,35 @@ function renderResult(data) {
   const hasSitePages = sitePages?.pagesChecked > 1;
   const hostname = (() => { try { return new URL(currentUrl).hostname; } catch { return currentUrl; } })();
 
-  const shareTweet = encodeURIComponent(`My site ${hostname} scored ${grade} on AI visibility. Find out if yours is invisible to ChatGPT and Perplexity → https://legibly.dev`);
-  const shareLinkedIn = encodeURIComponent(`My site scored grade ${grade} on AI visibility — meaning AI search engines may not be recommending it. Legibly scans for the exact issues. Free scan: https://legibly.dev`);
+  const shareTweet = encodeURIComponent(`My site ${hostname} scored ${grade} on AI visibility. Find out if yours is invisible to ChatGPT and Perplexity → https://blindgeo.com`);
+  const shareLinkedIn = encodeURIComponent(`My site scored grade ${grade} on AI visibility — meaning AI search engines may not be recommending it. BlindGEO scans for the exact issues. Free scan: https://blindgeo.com`);
 
   resultSection.innerHTML = `
     <div class="result-card ${gradeClass}">
 
-      <div class="grade-display" aria-label="Grade ${safeGrade}">${safeGrade}</div>
-      <div class="score-label">AI Visibility Score: ${safeScore}/100</div>
       ${visibilityPct !== null
-        ? `<div class="visibility-headline" aria-live="polite">
-             AI sees <strong>${visibilityPct}%</strong> of your site
+        ? `<div class="visibility-headline visibility-headline--lead" aria-live="polite">
+             <span class="visibility-pct-big">${visibilityPct}%</span>
+             <span class="visibility-pct-label">of your content is invisible to AI</span>
              ${vis?.botWordCount != null && vis?.humanWordCount != null && vis.humanWordCount > vis.botWordCount
-               ? `<span class="visibility-hidden-count">(${escapeHtml(String(vis.humanWordCount - vis.botWordCount))} words hidden from ChatGPT)</span>`
+               ? `<span class="visibility-hidden-count">${escapeHtml(String(vis.humanWordCount - vis.botWordCount))} words ChatGPT can't read</span>`
                : ''}
            </div>`
         : ''}
-      ${blocker ? `<p class="blocker" role="alert">⚠️ ${escapeHtml(blocker)}</p>` : ''}
 
       <div class="competitor-hero" id="competitor-hero" aria-live="polite">
         <span class="competitor-hero-loading">
           <span class="teaser-spinner" aria-hidden="true"></span>
           Finding who's appearing instead of ${escapeHtml(hostname ? hostname : 'you')}…
         </span>
+      </div>
+
+      <div class="grade-display-row">
+        <div class="grade-display" aria-label="Grade ${safeGrade}">${safeGrade}</div>
+        <div class="grade-meta">
+          <div class="score-label">AI Visibility Score: ${safeScore}/100</div>
+          ${blocker ? `<p class="blocker" role="alert">⚠️ ${escapeHtml(blocker)}</p>` : ''}
+        </div>
       </div>
 
       <ul class="signals" aria-label="Signal summary">
@@ -359,7 +379,7 @@ function renderResult(data) {
         <a href="https://twitter.com/intent/tweet?text=${shareTweet}" target="_blank" rel="noopener" class="btn-share btn-share--twitter">
           Post on X
         </a>
-        <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://legibly.dev')}&summary=${shareLinkedIn}" target="_blank" rel="noopener" class="btn-share btn-share--linkedin">
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://blindgeo.com')}&summary=${shareLinkedIn}" target="_blank" rel="noopener" class="btn-share btn-share--linkedin">
           Share on LinkedIn
         </a>
       </div>
