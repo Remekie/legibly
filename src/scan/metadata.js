@@ -43,7 +43,8 @@ export async function checkMetadata(url, html = null, redirectHops = null) {
     if (noindex)                                                    issues.push('noindex');
     if (!title || GENERIC_TITLES.test(title.split('|')[0].trim())) issues.push('title');
     if (metaDesc.length < MIN_META_LENGTH)                          issues.push('description');
-    if (!ogTitle || !ogDesc || !ogImage)                            issues.push('og');
+    // og:image alone missing is not a scored gap — og:title + og:description is sufficient for AI
+    if (!ogTitle || !ogDesc)                                         issues.push('og');
     if (h1Generic)                                                  issues.push('h1');
     if (!hasH2)                                                     issues.push('headings');
     if (!canonical)                                                 issues.push('canonical');

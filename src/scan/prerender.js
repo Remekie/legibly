@@ -56,6 +56,13 @@ export async function checkPrerender(url) {
     const BOT_WALL = /checking your browser|enable javascript and cookies|cloudflare ray id|access denied|just a moment\.\.\./i;
     const isBotWall = BOT_WALL.test(botHtml);
 
+    // Detect age/access gates — interstitials that block real content
+    // Only check the first 8KB to avoid false positives from footer disclaimers
+    // Excludes "healthcare professionals only" — appears too frequently in body copy to be reliable
+    const AGE_GATE = /confirm.*(?:your )?age|(?:must be|you must be) (?:at least )?1[89]\+?|(?:18|19|21)\+|enter.*(?:birth ?date|dob)|age verification required/i;
+    const earlyHtml = botHtml.slice(0, 8000);
+    const isAgeGated = !isSpaOnly && !isBotWall && AGE_GATE.test(earlyHtml);
+
     const agentView = (!isSpaOnly && !isBotWall)
       ? extractAgentView(botHtml, humanHtml)
       : null;
@@ -63,7 +70,8 @@ export async function checkPrerender(url) {
     return {
       score: isSpaOnly ? 0 : 10,
       isSpaOnly,
-      isBlocked: false,
+      isBlocked:  false,
+      isAgeGated,
       statusCode,
       agentView,
       botHtml:   (isSpaOnly || isBotWall) ? null : botHtml,
@@ -71,7 +79,9 @@ export async function checkPrerender(url) {
       ...visibility,
       detail: isSpaOnly
         ? "AI can't read your site. The way it's built makes it invisible to ChatGPT, Claude, and Perplexity."
-        : 'AI can read your site content ✓',
+        : isAgeGated
+          ? "An access gate (age verification or professional-only interstitial) limits what AI crawlers can index. Gated content reduces AI citation coverage."
+          : 'AI can read your site content ✓',
     };
   } finally {
     await browser?.close();

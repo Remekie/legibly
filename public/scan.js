@@ -163,12 +163,31 @@ function buildLlmstxtPreview(url, scanData) {
 
 function extractCategory(pageTitle, hostname) {
   if (!pageTitle) return null;
-  const brandName = hostname.split('.')[0].replace(/-/g, ' ');
-  const category  = pageTitle
-    .replace(new RegExp(brandName, 'gi'), '')
+  const domainPart = hostname.replace(/^www\./, '').split('.')[0];
+
+  // Split compound domain into individual words (camelCase + hyphens)
+  // e.g. "dentsplysirona" → ["dentsply","sirona"], "the-channel-co" → ["the","channel","co"]
+  const brandWords = domainPart
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/-/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 2); // skip short fragments like "co", "the"
+
+  // Strip text after title separators first (" - Brand Name", " | Brand")
+  let category = pageTitle.replace(/\s*[-–—|]\s*[^-–—|]+$/, '').trim() || pageTitle;
+
+  // Strip each brand word individually
+  for (const word of brandWords) {
+    category = category.replace(new RegExp(`\\b${word}\\b`, 'gi'), '');
+  }
+
+  // Strip common company name suffixes
+  category = category
+    .replace(/\b(inc|llc|ltd|corp|usa|uk|group|solutions|services|company|technologies|products)\b/gi, '')
     .replace(/[-–—|:,]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+
   return category.length >= 10 ? category : null;
 }
 

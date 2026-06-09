@@ -7,6 +7,7 @@ export async function checkRobots(url) {
 
   let robotsTxt = '';
   let cloudflareBlocking = false;
+  let fetchSucceeded = false;
 
   try {
     const controller = new AbortController();
@@ -20,6 +21,7 @@ export async function checkRobots(url) {
 
     if (res.ok) {
       robotsTxt = await res.text();
+      fetchSucceeded = true;
     }
 
     // Cloudflare "Block AI Scrapers" toggle sets this header or noai tag
@@ -27,7 +29,18 @@ export async function checkRobots(url) {
     const xRobots = res.headers.get('x-robots-tag') ?? '';
     cloudflareBlocking = !!cfHeader || xRobots.includes('noai');
   } catch {
-    // Network timeout or error — treat as unknown
+    // Network timeout or error — treat as unknown, not blocked
+  }
+
+  // If robots.txt couldn't be fetched, state is unknown — never assert "blocked"
+  if (!fetchSucceeded && !cloudflareBlocking) {
+    return {
+      score: 8,
+      blockedBots: [],
+      cloudflareBlocking: false,
+      fetchState: 'unknown',
+      detail: 'Could not verify robots.txt — assuming AI crawlers are permitted.',
+    };
   }
 
   const blockedBots = parseBlockedBots(robotsTxt);
@@ -73,7 +86,8 @@ function parseBlockedBots(robotsTxt) {
     const line = raw.trim();
     if (line.startsWith('User-agent:')) {
       currentAgents.push(line.replace('User-agent:', '').trim());
-    } else if (line.startsWith('Disallow: /')) {
+    } else if (line === 'Disallow: /') {
+      // Only root-level full blocks count — subfolder disallows (Disallow: /admin) are not a block
       blocked.push(...currentAgents);
       currentAgents = [];
     } else if (line === '') {
