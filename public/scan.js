@@ -196,31 +196,21 @@ function renderLockedAnalysis(visibilityPct, hasSitePages, scanData) {
       </div>
 
       <div class="llmstxt-preview-section">
-        <div class="llmstxt-preview-label">Your llms.txt file — what AI models need to understand your site:</div>
+        <div class="llmstxt-preview-label">Your llms.txt — what AI models need to understand your business:</div>
         <div class="llmstxt-preview-code" id="llmstxt-preview-code"></div>
-        <div class="llmstxt-preview-gate">
-          <input type="email" id="llmstxt-email" placeholder="you@company.com" autocomplete="email" class="llmstxt-email-input">
-          <button class="btn-llmstxt-download" id="llmstxt-download-btn">Download my llms.txt →</button>
-        </div>
-        <p class="llmstxt-preview-hint" id="llmstxt-hint"></p>
+        <p style="font-size:.8125rem;color:var(--color-muted);margin-top:.5rem">Included in the full report →</p>
       </div>
 
-      <div class="locked-dual-cta">
-        <div class="locked-cta-item">
-          <div class="locked-cta-price">$29</div>
-          <div class="locked-cta-desc">AI View + 3 prompts + Perplexity citations</div>
-          <button class="btn-snapshot locked-snapshot-btn">
-            See who's winning — $29 →
+      <div class="locked-primary-cta">
+        <button class="btn-primary locked-unlock-btn" style="width:100%;font-size:.9375rem;padding:.875rem 1.5rem">
+          Get full report — $79 →
+        </button>
+        <p class="locked-primary-cta-desc">12 prompts you should be winning · all copy-paste fixes · your llms.txt file · competitor citations</p>
+        <p style="text-align:center;margin-top:.625rem">
+          <button class="locked-snapshot-btn" style="background:none;border:none;font-size:.875rem;color:var(--color-muted);text-decoration:underline;cursor:pointer;padding:0">
+            Just want to see who's beating you? $29 →
           </button>
-        </div>
-        <div class="locked-cta-divider">or</div>
-        <div class="locked-cta-item">
-          <div class="locked-cta-price">$79</div>
-          <div class="locked-cta-desc">Full report: 12 prompts, all fixes, llms.txt</div>
-          <button class="btn-primary locked-unlock-btn" style="font-size:.8125rem;padding:.625rem 1.25rem">
-            Full report with fixes — $79 →
-          </button>
-        </div>
+        </p>
       </div>
 
     </div>
@@ -232,32 +222,6 @@ function renderLlmstxtPreview(scanData) {
   if (!codeEl) return;
   const { visible, blurred } = buildLlmstxtPreview(currentUrl, scanData);
   codeEl.innerHTML = `<span class="llmstxt-visible">${visible}</span><span class="llmstxt-blurred">${blurred}</span>`;
-
-  const btn  = document.getElementById('llmstxt-download-btn');
-  const hint = document.getElementById('llmstxt-hint');
-  btn?.addEventListener('click', async () => {
-    const email = document.getElementById('llmstxt-email')?.value?.trim() ?? '';
-    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email || !EMAIL_RE.test(email)) {
-      if (hint) { hint.textContent = 'Please enter a valid email address.'; hint.style.color = 'var(--color-fail)'; }
-      return;
-    }
-    btn.disabled = true;
-    btn.textContent = 'Sending…';
-    try {
-      await fetch('/api/email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, url: currentUrl, grade: currentScanData?.grade }),
-      });
-      localStorage.setItem('legibly_email', email);
-      if (hint) { hint.textContent = `llms.txt will be emailed to ${email} — usually within 60 seconds.`; hint.style.color = 'var(--color-pass)'; }
-      btn.textContent = 'Sent ✓';
-    } catch {
-      btn.disabled = false;
-      btn.textContent = 'Download my llms.txt →';
-    }
-  });
 }
 
 async function loadCompetitorTeaser() {
@@ -310,10 +274,14 @@ function renderResult(data) {
   const vis = signals.prerender;
   const visibilityPct = vis?.visibilityPct ?? null;
   const missingWordCount = vis?.missingWordCount ?? 0;
+  // invisiblePct is the % of content AI CANNOT read (0 = fully readable, 100 = fully invisible)
+  const invisiblePct = visibilityPct !== null ? Math.max(0, 100 - visibilityPct) : null;
+  const showInvisibilityHero = invisiblePct !== null && invisiblePct >= 60;
 
   const paid = hasPaid();
   const hasSitePages = sitePages?.pagesChecked > 1;
   const hostname = (() => { try { return new URL(currentUrl).hostname; } catch { return currentUrl; } })();
+  const failCount = Object.values(signals ?? {}).filter(s => (s?.score ?? 0) < 5).length;
 
   const shareTweet = encodeURIComponent(`My site ${hostname} scored ${grade} on AI visibility. Find out if yours is invisible to ChatGPT and Perplexity → https://blindgeo.com`);
   const shareLinkedIn = encodeURIComponent(`My site scored grade ${grade} on AI visibility — meaning AI search engines may not be recommending it. BlindGEO scans for the exact issues. Free scan: https://blindgeo.com`);
@@ -321,22 +289,27 @@ function renderResult(data) {
   resultSection.innerHTML = `
     <div class="result-card ${gradeClass}">
 
-      ${visibilityPct !== null
+      <div class="competitor-hero" id="competitor-hero" aria-live="polite">
+        <span class="competitor-hero-loading">
+          <span class="teaser-spinner" aria-hidden="true"></span>
+          Checking who AI recommends instead of ${escapeHtml(hostname ? hostname : 'you')}…
+        </span>
+      </div>
+
+      ${showInvisibilityHero
         ? `<div class="visibility-headline visibility-headline--lead" aria-live="polite">
-             <span class="visibility-pct-big">${visibilityPct}%</span>
+             <span class="visibility-pct-big">${invisiblePct}%</span>
              <span class="visibility-pct-label">of your content is invisible to AI</span>
              ${vis?.botWordCount != null && vis?.humanWordCount != null && vis.humanWordCount > vis.botWordCount
                ? `<span class="visibility-hidden-count">${escapeHtml(String(vis.humanWordCount - vis.botWordCount))} words ChatGPT can't read</span>`
                : ''}
            </div>`
-        : ''}
-
-      <div class="competitor-hero" id="competitor-hero" aria-live="polite">
-        <span class="competitor-hero-loading">
-          <span class="teaser-spinner" aria-hidden="true"></span>
-          Finding who's appearing instead of ${escapeHtml(hostname ? hostname : 'you')}…
-        </span>
-      </div>
+        : failCount > 0
+          ? `<div class="visibility-headline" style="margin:.5rem 0 .75rem">
+               <strong>${failCount} signal${failCount > 1 ? 's' : ''} failing</strong>
+               <span style="font-weight:400;color:var(--color-muted)"> — AI can't confidently identify or recommend your business</span>
+             </div>`
+          : ''}
 
       <div class="grade-display-row">
         <div class="grade-display" aria-label="Grade ${safeGrade}">${safeGrade}</div>
@@ -351,9 +324,10 @@ function renderResult(data) {
       </ul>
 
       <div class="cta-row">
-        <button class="btn-primary" id="breakdown-btn" aria-expanded="false">
-          See what's failing →
-        </button>
+        <a href="#breakdown-panel-anchor" id="breakdown-btn" role="button" aria-expanded="false"
+           style="font-size:.875rem;color:var(--color-muted);text-decoration:underline;cursor:pointer">
+          See full breakdown ↓
+        </a>
       </div>
 
       <div class="breakdown-panel" id="breakdown-panel" role="region" aria-label="Full signal breakdown" hidden>
@@ -403,7 +377,7 @@ function renderResult(data) {
   document.getElementById('tw-title')?.setAttribute('content', shareTitle);
   document.getElementById('tw-desc')?.setAttribute('content', shareDesc);
 
-  document.getElementById('breakdown-btn').addEventListener('click', toggleBreakdown);
+  document.getElementById('breakdown-btn').addEventListener('click', (e) => { e.preventDefault(); toggleBreakdown(); });
 
   document.querySelector('.locked-unlock-btn')?.addEventListener('click', () => redirectToCheckout('report'));
   document.querySelector('.locked-snapshot-btn')?.addEventListener('click', () => redirectToCheckout('snapshot'));
@@ -829,7 +803,7 @@ function toggleBreakdown() {
   const panel = document.getElementById('breakdown-panel');
   const isOpen = btn.getAttribute('aria-expanded') === 'true';
   btn.setAttribute('aria-expanded', String(!isOpen));
-  btn.textContent = isOpen ? 'See full breakdown →' : 'Hide breakdown ↑';
+  btn.textContent = isOpen ? 'See full breakdown ↓' : 'Hide breakdown ↑';
   panel.hidden = isOpen;
   if (!isOpen) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }

@@ -1300,11 +1300,19 @@ button:focus-visible, input:focus-visible {
 }
 
 /* Dual CTA (snapshot $29 + full report $79) */
-.locked-dual-cta {
-  display: flex;
-  align-items: stretch;
-  gap: 1rem;
+.locked-dual-cta { display: none; } /* replaced by locked-primary-cta */
+
+.locked-primary-cta {
   margin-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: .375rem;
+}
+.locked-primary-cta-desc {
+  font-size: .8125rem;
+  color: var(--color-muted);
+  text-align: center;
+  line-height: 1.5;
 }
 .locked-cta-item {
   flex: 1;
