@@ -220,24 +220,55 @@ function renderAiView(data) {
 }
 
 function renderPrompts(data) {
-  const report = data.report;
-  const prompts = report?.prompts;
+  const report    = data.report;
+  const prompts   = report?.prompts;
   const citations = report?.citations;
+  const authority = report?.authority;
+
+  // Map new stage keys + legacy keys
+  const STAGE_ORDER = ['awareness', 'consideration', 'evaluation', 'decision', 'comparison', 'usecase', 'postpurchase'];
+  const STAGE_LABELS = {
+    awareness:    'Awareness — unbranded, need-based',
+    consideration:'Consideration — unbranded comparison',
+    evaluation:   'Evaluation — branded comparison',
+    decision:     'Decision — high-intent',
+    comparison:   'Comparison',
+    usecase:      'Use Case',
+    postpurchase: 'Post-Purchase',
+  };
 
   const promptGroups = prompts
-    ? Object.entries(prompts).filter(([, v]) => v?.length > 0).map(([intent, list]) => `
-        <div class="prompt-intent-group">
-          <div class="prompt-intent-head">${esc(INTENT_LABELS[intent] ?? intent)}</div>
-          <ul class="prompt-list-dash">
-            ${list.map(p => {
-              const text = typeof p === 'object' ? p.prompt : p;
-              const type = typeof p === 'object' ? p.type : null;
-              const tag = type ? `<span class="prompt-tag prompt-tag--${esc(type)}">${esc(type)}</span>` : '';
-              return `<li>${tag}"${esc(text)}"</li>`;
-            }).join('')}
-          </ul>
-        </div>`).join('')
+    ? STAGE_ORDER
+        .filter(k => Array.isArray(prompts[k]) && prompts[k].length > 0)
+        .map(intent => `
+          <div class="prompt-intent-group">
+            <div class="prompt-intent-head">${esc(STAGE_LABELS[intent] ?? intent)}</div>
+            <ul class="prompt-list-dash">
+              ${prompts[intent].map(p => {
+                const text = typeof p === 'object' ? p.prompt : p;
+                const type = typeof p === 'object' ? p.type : null;
+                const tag = type ? `<span class="prompt-tag prompt-tag--${esc(type)}">${esc(type)}</span>` : '';
+                return `<li>${tag}"${esc(text)}"</li>`;
+              }).join('')}
+            </ul>
+          </div>`).join('')
     : '';
+
+  // Authority signal block
+  const authorityHtml = authority ? `
+    <hr class="dash-divider">
+    <h2 class="dash-section-title">Off-Page Authority</h2>
+    <p class="dash-section-sub" style="margin-bottom:1rem">${esc(authority.onPageNote)}</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1rem">
+      <div style="padding:8px 14px;border-radius:6px;font-size:13px;font-weight:600;${authority.hasWikipedia ? 'background:#dcfce7;color:#166534' : 'background:#fee2e2;color:#991b1b'}">
+        ${authority.hasWikipedia ? '✓' : '✗'} Wikipedia entry
+      </div>
+      <div style="padding:8px 14px;border-radius:6px;font-size:13px;font-weight:600;${authority.hasReddit ? 'background:#dcfce7;color:#166534' : 'background:#fee2e2;color:#991b1b'}">
+        ${authority.hasReddit ? '✓' : '✗'} Reddit discussions
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--color-muted)">${esc(authority.detail)}</p>
+  ` : '';
 
   let citationHtml = '';
   if (citations) {
@@ -250,7 +281,7 @@ function renderPrompts(data) {
     citationHtml = `
       <hr class="dash-divider">
       <h2 class="dash-section-title">Are You Winning These Prompts?</h2>
-      <p class="dash-section-sub">We ran your prompts through Perplexity and checked if <strong>${esc(c.domain)}</strong> appears in the answers.</p>
+      <p class="dash-section-sub">We ran each prompt ${c.runsPerPrompt ?? 1} time${(c.runsPerPrompt ?? 1) > 1 ? 's' : ''} through Perplexity to account for AI answer variability. Checked if <strong>${esc(c.domain)}</strong> appears.</p>
       <div class="citation-score-row">
         <span class="citation-rate" style="color:${rateColor}">${c.promptsAppearing}/${c.promptsTested}</span>
         <span class="citation-label">prompts where your site appears — ${esc(rateLabel)}</span>
@@ -263,7 +294,9 @@ function renderPrompts(data) {
             <div class="citation-detail">
               <div class="citation-prompt">"${esc(r.prompt)}"</div>
               <div class="citation-verdict ${r.appearing ? 'verdict--win' : 'verdict--miss'}">
-                ${r.appearing ? 'Your site appears in this AI answer' : 'Your site does not appear — competitors are winning this prompt'}
+                ${r.runs > 1
+                  ? `Appeared ${r.appearances ?? (r.appearing ? 1 : 0)}/${r.runs} runs`
+                  : r.appearing ? 'Your site appears in this AI answer' : 'Your site does not appear — competitors are winning this prompt'}
               </div>
               ${r.competitors?.length ? `<div class="citation-competitors">Cited instead: ${r.competitors.map(d => `<span class="competitor-tag">${esc(d)}</span>`).join('')}</div>` : ''}
             </div>
@@ -317,13 +350,14 @@ function renderPrompts(data) {
       </div>
     </div>`;
 
-  if (!promptGroups && !citationHtml) return `<p style="color:var(--color-muted);padding:2rem 0">Prompts not generated — ANTHROPIC_API_KEY may not be set.</p>`;
+  if (!promptGroups && !citationHtml && !authorityHtml) return `<p style="color:var(--color-muted);padding:2rem 0">Prompts not generated — ANTHROPIC_API_KEY may not be set.</p>`;
 
   return `
     <h2 class="dash-section-title">Prompts This Page Should Be Winning</h2>
-    <p class="dash-section-sub">Real queries people type into ChatGPT and Perplexity where your site should appear.</p>
+    <p class="dash-section-sub">Awareness and consideration prompts are unbranded — these are what real customers type before they know your name. Evaluation and decision prompts include your brand.</p>
     ${promptGroups}
     ${citationHtml}
+    ${authorityHtml}
     ${providerHtml}`;
 }
 

@@ -100,6 +100,7 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_mon_results_prompt ON monitoring_results(prompt_id, checked_at DESC);
   CREATE INDEX IF NOT EXISTS idx_mon_results_user   ON monitoring_results(user_id, checked_at DESC);
+
   CREATE INDEX IF NOT EXISTS idx_scans_user ON scans(user_id, created_at DESC);
 
   -- Migration: add fixed_at if not present (safe on existing DBs)
@@ -111,5 +112,7 @@ db.exec(`
 
 // Safe migrations — add columns that may not exist on older DBs
 try { db.exec('ALTER TABLE scans ADD COLUMN fixed_at INTEGER'); } catch { /* already exists */ }
+try { db.exec('ALTER TABLE monitoring_results ADD COLUMN runs INTEGER NOT NULL DEFAULT 1'); } catch { /* already exists */ }
+try { db.exec('ALTER TABLE monitoring_results ADD COLUMN appearances INTEGER NOT NULL DEFAULT 0'); } catch { /* already exists */ }
 
 export default db;

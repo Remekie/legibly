@@ -1287,7 +1287,9 @@
                 <div class="provider-row">
                   <div class="provider-icon perplexity">P</div>
                   <div class="provider-result ${r.appeared ? 'provider-cited' : 'provider-missing'}">
-                    ${r.appeared ? '✓ You appeared' : '✗ Not mentioned'}
+                    ${r.runs > 1
+                      ? `${r.appeared ? '✓' : '✗'} Appeared ${r.appearances ?? (r.appeared ? 1 : 0)}/${r.runs ?? 1} times`
+                      : r.appeared ? '✓ You appeared' : '✗ Not mentioned'}
                   </div>
                   ${r.snippet ? `<span style="font-size:11px;color:var(--muted);margin-left:8px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.snippet)}">${esc(r.snippet.slice(0, 60))}…</span>` : ''}
                 </div>

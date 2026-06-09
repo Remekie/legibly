@@ -1097,19 +1097,29 @@ app.get('/internal/cron/weekly-audit', async (req, res) => {
         emailed++;
       }
 
-      // Check user-defined monitoring prompts and store results
+      // Check user-defined monitoring prompts with multi-run for reliability
       const monPrompts = getPromptSlots(user_id);
       for (const mp of monPrompts) {
         if (!mp.url) continue;
         try {
           const mpDomain = new URL(mp.url).hostname.replace(/^www\./, '');
-          const result = await checkPromptInPerplexity(mp.prompt, mpDomain);
-          if (result !== null) {
+          // Run 3 times — AI answers are non-deterministic, single checks are unreliable
+          const runResults = await Promise.allSettled([
+            checkPromptInPerplexity(mp.prompt, mpDomain),
+            checkPromptInPerplexity(mp.prompt, mpDomain),
+            checkPromptInPerplexity(mp.prompt, mpDomain),
+          ]);
+          const validRuns   = runResults.filter(r => r.status === 'fulfilled' && r.value !== null).map(r => r.value);
+          const appearances = validRuns.filter(r => r.appeared).length;
+          if (validRuns.length > 0) {
+            const snippet = validRuns.find(r => r.snippet)?.snippet ?? null;
             saveMonitoringResult({
-              promptId: mp.id,
-              userId:   user_id,
-              appeared: result.appeared,
-              snippet:  result.snippet,
+              promptId:    mp.id,
+              userId:      user_id,
+              appeared:    appearances > 0,
+              snippet,
+              runs:        validRuns.length,
+              appearances,
             });
           }
         } catch { /* non-critical per-prompt error */ }

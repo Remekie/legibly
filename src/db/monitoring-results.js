@@ -1,12 +1,14 @@
 import { randomUUID } from 'crypto';
 import db from './index.js';
 
-export function saveMonitoringResult({ promptId, userId, appeared, snippet }) {
-  const id = randomUUID();
+export function saveMonitoringResult({ promptId, userId, appeared, snippet, runs = 1, appearances = null }) {
+  const id             = randomUUID();
+  const appearedInt    = appeared ? 1 : 0;
+  const appearancesInt = appearances ?? appearedInt; // backward compat: single run = boolean
   db.prepare(`
-    INSERT INTO monitoring_results (id, prompt_id, user_id, appeared, snippet)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(id, promptId, userId, appeared ? 1 : 0, snippet ?? null);
+    INSERT INTO monitoring_results (id, prompt_id, user_id, appeared, snippet, runs, appearances)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(id, promptId, userId, appearedInt, snippet ?? null, runs, appearancesInt);
   return id;
 }
 
@@ -27,6 +29,7 @@ export function getLatestResultPerPrompt(userId) {
   return db.prepare(`
     SELECT
       mr.prompt_id, mr.appeared, mr.checked_at, mr.snippet,
+      mr.runs, mr.appearances,
       mp.prompt, mp.url
     FROM monitoring_results mr
     JOIN monitoring_prompts mp ON mr.prompt_id = mp.id

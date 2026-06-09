@@ -6,6 +6,7 @@ import { generateLlmstxt } from './llmstxt-gen.js';
 import { generateFixes } from './fixes.js';
 import { checkCitations } from './citations.js';
 import { generateLovableSnippets } from './lovable-snippets.js';
+import { checkAuthority } from '../scan/authority.js';
 
 export async function generateReport(url, brandContext = null) {
   const [scanResult, context] = await Promise.all([
@@ -30,10 +31,11 @@ export async function generateReport(url, brandContext = null) {
       : Promise.resolve(null)
   );
 
-  const [schemaRecs, llmstxt, citations] = await Promise.allSettled([
+  const [schemaRecs, llmstxt, citations, authority] = await Promise.allSettled([
     Promise.resolve(generateSchemaRecs(enrichedContext, existingSchemaTypes)),
     generateLlmstxt(url),
     checkCitations(context.domain, promptsResult),
+    checkAuthority(context.domain, enrichedContext.brandName),
   ]);
 
   const fixes = generateFixes(scanResult.signals, enrichedContext, scanResult.sitePages);
@@ -58,7 +60,8 @@ export async function generateReport(url, brandContext = null) {
       prompts:         promptsResult,
       schemaRecs:      schemaRecsValue,
       llmstxt:         llmstxtValue,
-      citations:       citations.status === 'fulfilled' ? citations.value : null,
+      citations:       citations.status  === 'fulfilled' ? citations.value  : null,
+      authority:       authority.status  === 'fulfilled' ? authority.value  : null,
       fixes,
       lovableSnippets,
       agentView:       scanResult.signals.prerender?.agentView ?? null,
