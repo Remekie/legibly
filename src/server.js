@@ -1,4 +1,5 @@
 import express from 'express';
+import Anthropic from '@anthropic-ai/sdk';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import Stripe from 'stripe';
@@ -552,28 +553,67 @@ app.post('/api/fix', fixLimiter, async (req, res) => {
   }
 });
 
-// ── Competitors preview (free tier teaser — 1 Perplexity call, aggressively cached) ──
+// ── Competitors preview — 3-role observed-citation architecture ──────────────
+//
+// Rule: the competitor list is always a SUBSET of Perplexity's data.citations.
+// Claude builds the query (Step 1) and classifies citations (Step 3).
+// Perplexity observes which domains it actually cites (Step 2).
+// No model is ever asked "who are the competitors" — that prompt is banned.
 
 const competitorCache = new Map(); // url → { domains, ts }
 const COMPETITOR_TTL  = 12 * 60 * 60 * 1000; // 12 hours
 
 const competitorLimiter = rateLimit({
-  windowMs: 60 * 1000, max: 20,
+  windowMs: 60 * 1000, max: 10,
   standardHeaders: true, legacyHeaders: false,
   message: { error: 'Too many requests.' },
 });
 
-// Extract business category from page title by stripping the brand name.
-// Returns null if the result is too short/generic to be useful.
-function extractCategoryFromTitle(pageTitle, domain) {
-  if (!pageTitle) return null;
-  const brandName = domain.replace(/^www\./, '').split('.')[0].replace(/-/g, ' ');
-  const category  = pageTitle
-    .replace(new RegExp(brandName, 'gi'), '')
-    .replace(/[-–—|:,]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return category.length >= 10 ? category : null;
+const _anthropic = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null;
+
+async function buildAwarenessQuery(pageSignals) {
+  if (!_anthropic) return null;
+  const { pageTitle, h1, bodyText, hostname } = pageSignals;
+  const msg = await _anthropic.messages.create({
+    model:      'claude-haiku-4-5-20251001',
+    max_tokens: 150,
+    system:     'Return JSON only. No prose, no competitor names, no explanation.',
+    messages:   [{ role: 'user', content:
+      `Page signals for ${hostname}:\nTitle: ${pageTitle}\nH1: ${h1}\nContent excerpt: ${(bodyText ?? '').slice(0, 400)}\n\n` +
+      `Return exactly: {"category":"<specific business type>","awareness_query":"<what a real buyer types searching for this type of service, unbranded>","segment":"<buyer type>"}`
+    }],
+  });
+  const raw  = msg.content[0]?.text ?? '';
+  const json = raw.replace(/```(?:json)?/g, '').replace(/```/g, '').trim();
+  try { return JSON.parse(json); } catch { return null; }
+}
+
+async function classifyCitations(citations, category, hostname) {
+  // When Anthropic unavailable, return [] — raw unfiltered citations include directories/noise
+  if (!_anthropic || citations.length === 0) return [];
+  const msg = await _anthropic.messages.create({
+    model:      'claude-haiku-4-5-20251001',
+    max_tokens: 200,
+    system:     'Return JSON only. Do NOT add any domain not in the input list.',
+    messages:   [{ role: 'user', content:
+      `Category: ${category}\nExclude: "${hostname}" and any domain for the same site.\n` +
+      `Cited domains: ${JSON.stringify(citations)}\n\n` +
+      `Return JSON: {"competitors":["domain.com",...]} — include only genuine category rivals ` +
+      `(businesses that could win this customer). Exclude: Wikipedia, Reddit, news sites, ` +
+      `directories (Clutch, G2, Capterra, Yelp), review aggregators, the brand's own domain.`
+    }],
+  });
+  const raw  = msg.content[0]?.text ?? '';
+  const json = raw.replace(/```(?:json)?/g, '').replace(/```/g, '').trim();
+  try {
+    const { competitors } = JSON.parse(json);
+    // Hard rule: result is always a subset of input citations — normalize www/case for matching
+    const normalize   = d => d.toLowerCase().replace(/^www\./, '');
+    const normSet     = new Set(citations.map(normalize));
+    return (competitors ?? []).filter(d => normSet.has(normalize(d)));
+  } catch { return []; }
 }
 
 app.get('/api/competitors-preview', competitorLimiter, async (req, res) => {
@@ -591,40 +631,49 @@ app.get('/api/competitors-preview', competitorLimiter, async (req, res) => {
   }
 
   try {
-    const hostname  = new URL(url).hostname.replace(/^www\./, '');
+    const hostname = new URL(url).hostname.replace(/^www\./, '');
 
-    // Use page title from scan cache if available (avoids extra fetch)
+    // Gather page signals from scan cache (populated by the free scan that just ran)
     const scanCached = getCached(url);
-    const pageTitle  = scanCached?.signals?.metadata?.pageTitle
-                    ?? String(req.query.title ?? '');
-    const category   = extractCategoryFromTitle(pageTitle, hostname);
+    const pageTitle  = scanCached?.signals?.metadata?.pageTitle ?? String(req.query.title ?? '');
+    const h1         = scanCached?.signals?.metadata?.h1Text ?? '';
+    const bodyText   = ''; // scan cache doesn't store body; title+H1 sufficient for Haiku
 
-    // Build an unbranded, need-based awareness query from the category.
-    // If no category could be extracted, return [] immediately — no guessing.
-    if (!category) {
+    // Step 1 — Claude builds the unbranded awareness query
+    const queryData = await buildAwarenessQuery({ pageTitle, h1, bodyText, hostname });
+    if (!queryData?.awareness_query) {
       competitorCache.set(url, { domains: [], ts: Date.now() });
       return res.json({ competitors: [] });
     }
 
-    const query = `best ${category}`;
-
+    // Step 2 — Perplexity runs the real query; capture only data.citations
     const resp = await fetch('https://api.perplexity.ai/chat/completions', {
       method:  'POST',
       headers: { 'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ model: 'sonar', messages: [{ role: 'user', content: query }], max_tokens: 400 }),
+      body:    JSON.stringify({ model: 'sonar', messages: [{ role: 'user', content: queryData.awareness_query }], max_tokens: 400 }),
     });
 
-    let domains = [];
-    if (resp.ok) {
-      const data      = await resp.json();
-      const citations = data.citations ?? [];
-      // Only use domains that Perplexity actually cited for the query — no guessing from answer text
-      domains = citations
-        .map(c => { try { return new URL(String(c)).hostname.replace(/^www\./, '').toLowerCase(); } catch { return null; } })
-        .filter(h => h && h !== hostname && !h.includes('wikipedia') && !h.includes('reddit'))
-        .filter((h, i, arr) => arr.indexOf(h) === i) // dedupe
-        .slice(0, 3);
+    if (!resp.ok) {
+      competitorCache.set(url, { domains: [], ts: Date.now() });
+      return res.json({ competitors: [] });
     }
+
+    const data      = await resp.json();
+    const citations = (data.citations ?? [])
+      .map(c => { try { return new URL(String(c)).hostname.replace(/^www\./, '').toLowerCase(); } catch { return null; } })
+      .filter(h => h && h !== hostname)
+      .filter((h, i, arr) => arr.indexOf(h) === i); // dedupe
+
+    if (citations.length === 0) {
+      competitorCache.set(url, { domains: [], ts: Date.now() });
+      return res.json({ competitors: [] });
+    }
+
+    // Step 3 — Claude classifies which cited domains are genuine rivals
+    // Hard rule: can only return a subset of citations, never a superset
+    const category = queryData.category || queryData.awareness_query;
+    const rivals   = await classifyCitations(citations, category, hostname);
+    const domains  = rivals.slice(0, 3);
 
     competitorCache.set(url, { domains, ts: Date.now() });
     res.json({ competitors: domains });
