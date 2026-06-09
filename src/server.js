@@ -563,6 +563,19 @@ const competitorLimiter = rateLimit({
   message: { error: 'Too many requests.' },
 });
 
+// Extract business category from page title by stripping the brand name.
+// Returns null if the result is too short/generic to be useful.
+function extractCategoryFromTitle(pageTitle, domain) {
+  if (!pageTitle) return null;
+  const brandName = domain.replace(/^www\./, '').split('.')[0].replace(/-/g, ' ');
+  const category  = pageTitle
+    .replace(new RegExp(brandName, 'gi'), '')
+    .replace(/[-–—|:,]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return category.length >= 10 ? category : null;
+}
+
 app.get('/api/competitors-preview', competitorLimiter, async (req, res) => {
   let url;
   try { url = await validatePublicUrl(String(req.query.url ?? '')); }
@@ -578,35 +591,39 @@ app.get('/api/competitors-preview', competitorLimiter, async (req, res) => {
   }
 
   try {
-    const hostname = new URL(url).hostname.replace(/^www\./, '');
-    const prompt   = `Search for "${hostname}" and list the top 3 competitor domain names that appear in AI search results for the same queries. Return ONLY a JSON array of domain strings, no explanation. Example: ["competitor1.com","competitor2.com","competitor3.com"]`;
+    const hostname  = new URL(url).hostname.replace(/^www\./, '');
+
+    // Use page title from scan cache if available (avoids extra fetch)
+    const scanCached = getCached(url);
+    const pageTitle  = scanCached?.signals?.metadata?.pageTitle
+                    ?? String(req.query.title ?? '');
+    const category   = extractCategoryFromTitle(pageTitle, hostname);
+
+    // Build an unbranded, need-based awareness query from the category.
+    // If no category could be extracted, return [] immediately — no guessing.
+    if (!category) {
+      competitorCache.set(url, { domains: [], ts: Date.now() });
+      return res.json({ competitors: [] });
+    }
+
+    const query = `best ${category}`;
 
     const resp = await fetch('https://api.perplexity.ai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'sonar',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 80,
-      }),
+      method:  'POST',
+      headers: { 'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ model: 'sonar', messages: [{ role: 'user', content: query }], max_tokens: 400 }),
     });
 
     let domains = [];
     if (resp.ok) {
-      const data = await resp.json();
-      const text = data.choices?.[0]?.message?.content ?? '[]';
-      const match = text.match(/\[.*?\]/s);
-      if (match) {
-        const parsed = JSON.parse(match[0]);
-        domains = parsed
-          .filter(d => typeof d === 'string' && d.includes('.'))
-          .map(d => d.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0])
-          .filter(d => d !== hostname)
-          .slice(0, 3);
-      }
+      const data      = await resp.json();
+      const citations = data.citations ?? [];
+      // Only use domains that Perplexity actually cited for the query — no guessing from answer text
+      domains = citations
+        .map(c => { try { return new URL(String(c)).hostname.replace(/^www\./, '').toLowerCase(); } catch { return null; } })
+        .filter(h => h && h !== hostname && !h.includes('wikipedia') && !h.includes('reddit'))
+        .filter((h, i, arr) => arr.indexOf(h) === i) // dedupe
+        .slice(0, 3);
     }
 
     competitorCache.set(url, { domains, ts: Date.now() });

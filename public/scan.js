@@ -161,16 +161,33 @@ function buildLlmstxtPreview(url, scanData) {
   return { visible, blurred, domain };
 }
 
+function extractCategory(pageTitle, hostname) {
+  if (!pageTitle) return null;
+  const brandName = hostname.split('.')[0].replace(/-/g, ' ');
+  const category  = pageTitle
+    .replace(new RegExp(brandName, 'gi'), '')
+    .replace(/[-–—|:,]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return category.length >= 10 ? category : null;
+}
+
 function buildPromptTeasers(scanData) {
-  const hostname = (() => { try { return new URL(currentUrl).hostname.replace(/^www\./, ''); } catch { return currentUrl; } })();
-  const title = scanData?.pageTitle ?? scanData?.signals?.metadata?.pageTitle ?? null;
-  // Use page title to personalize, fall back to hostname
-  const topic = title && title.length < 60 ? title : hostname;
-  return [
-    `"What are the best ${escapeHtml(hostname)} alternatives?"`,
-    `"Who provides services like ${escapeHtml(hostname)}?"`,
-    `"Is ${escapeHtml(hostname)} the best option for [your service]?"`,
-  ];
+  const hostname  = (() => { try { return new URL(currentUrl).hostname.replace(/^www\./, ''); } catch { return currentUrl; } })();
+  const pageTitle = scanData?.signals?.metadata?.pageTitle ?? scanData?.pageTitle ?? null;
+  const category  = extractCategory(pageTitle, hostname);
+
+  if (category) {
+    // Unbranded, need-based — domain never appears in awareness/consideration prompts
+    return [
+      `"best ${escapeHtml(category)}"`,
+      `"top ${escapeHtml(category)} options"`,
+      `"where to find ${escapeHtml(category)} help"`,
+    ];
+  }
+
+  // Fallback: no category extracted — return empty so the prompt teaser hides itself
+  return [];
 }
 
 function renderLockedAnalysis(visibilityPct, hasSitePages, scanData) {
@@ -182,10 +199,13 @@ function renderLockedAnalysis(visibilityPct, hasSitePages, scanData) {
 
       <div class="locked-section-title">Who's winning when AI answers these questions?</div>
 
-      <div class="prompt-teaser-list" id="prompt-teaser-list">
-        ${prompts.map(p => `<div class="prompt-teaser-row"><span class="prompt-teaser-q">${p}</span><span class="prompt-teaser-lock">locked</span></div>`).join('')}
-        <div class="prompt-teaser-more">+ 9 more prompts in the full report</div>
-      </div>
+      ${prompts.length
+        ? `<div class="prompt-teaser-list" id="prompt-teaser-list">
+            ${prompts.map(p => `<div class="prompt-teaser-row"><span class="prompt-teaser-q">${p}</span><span class="prompt-teaser-lock">locked</span></div>`).join('')}
+            <div class="prompt-teaser-more">+ 9 more prompts in the full report</div>
+           </div>`
+        : `<p style="font-size:.875rem;color:var(--color-muted);margin-bottom:1rem">The full report shows the exact queries your customers type into ChatGPT and Perplexity — where your competitors appear instead of you.</p>`
+      }
 
       <div class="competitor-teaser" id="competitor-teaser">
         <div class="competitor-teaser-label">Sites appearing instead of <strong>${escapeHtml(hostname)}</strong>:</div>
@@ -231,20 +251,23 @@ async function loadCompetitorTeaser() {
   const teaserNamesEl   = document.getElementById('competitor-teaser-names');
 
   try {
-    const res = await fetch(`/api/competitors-preview?url=${encodeURIComponent(currentUrl)}`);
+    // Pass page title so server can infer category without an extra fetch
+    const pageTitle = currentScanData?.signals?.metadata?.pageTitle ?? currentScanData?.pageTitle ?? '';
+    const res = await fetch(`/api/competitors-preview?url=${encodeURIComponent(currentUrl)}&title=${encodeURIComponent(pageTitle)}`);
     if (!res.ok) throw new Error();
     const { competitors } = await res.json();
 
-    // Update hero (above signal list)
+    // Update hero (above signal list) — only show names we literally observed in citations
     if (heroEl) {
       if (competitors?.length) {
         const hostname = (() => { try { return new URL(currentUrl).hostname.replace(/^www\./,''); } catch { return ''; } })();
         heroEl.innerHTML = `
-          <span class="competitor-hero-label">Appearing instead of <strong>${escapeHtml(hostname)}</strong>:</span>
+          <span class="competitor-hero-label">AI recommended these instead of <strong>${escapeHtml(hostname)}</strong>:</span>
           ${competitors.map(d => `<span class="competitor-hero-domain">${escapeHtml(d)}</span>`).join('')}
         `;
       } else {
-        heroEl.innerHTML = '';
+        // No observed citations — show honest copy, never fabricated names
+        heroEl.innerHTML = `<span class="competitor-hero-label" style="font-style:italic;font-weight:400">We'll show which sites AI recommends in your category — unlock in the full report.</span>`;
       }
     }
 
@@ -257,7 +280,7 @@ async function loadCompetitorTeaser() {
         ).join('');
         teaserNamesEl.removeAttribute('hidden');
       } else {
-        teaserNamesEl.removeAttribute('hidden');
+        teaserNamesEl.hidden = true; // nothing observed — stay hidden, hero shows honest copy
       }
     }
   } catch {
